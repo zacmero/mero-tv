@@ -1,0 +1,50 @@
+# Private device access, captures, profiles, and research downloads.
+/.private/
+/private/
+/local/
+/captures/
+/backups/
+/firmware/
+/downloads/
+/profiles/
+.env
+.env.*
+!.env.example
+local.properties
+local.env
+
+# Android authentication and signing material.
+**/adbkey
+**/adbkey.pub
+*.keystore
+*.jks
+*.p12
+*.pfx
+*.pem
+*.key
+
+# Personal browser data and exports (keep under .private/).
+/bookmarks.json
+/sites.json
+/history.json
+/cookies.json
+*.sqlite
+*.sqlite3
+*.db
+*.db-shm
+*.db-wal
+*.log
+
+# Builds, SDK caches, IDE state, and Python caches.
+.gradle/
+.kotlin/
+**/build/
+.idea/
+*.iml
+*.apk
+*.aab
+*.apks
+__pycache__/
+*.py[cod]
+.venv/
+.DS_Store
