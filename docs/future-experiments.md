@@ -27,3 +27,9 @@ Termux provides a non-root Android terminal environment, but its TV usability an
 The exact [FCC internal-photo exhibit listing](https://fccid.io/2AUQI-7436/Internal-Photos/Internal-Photos-20200629-v1-2AUQI-7436-IntPho-4884500) is worth preserving for future board comparison. A verified UART pinout or exact board revision has not been established. Powered micro-USB OTG peripherals are a candidate for testing; use model-specific evidence and measure power/data reliability.
 
 Generic Arch/Debian images are not an established boot option for this device. Replacing an Android image with a generic Linux distribution still depends on the boot chain, device tree, storage layout, and hardware drivers. Prefer the demonstrated model-specific Android work as the initial firmware research base.
+
+## Deferred desktop input work
+
+Owner request, 2026-11-10: revisit full desktop control using the Fire Stick remote. Proposed mapping: D-pad moves the pointer, center left-clicks, Menu right-clicks, and additional buttons scroll. This mapping is not implemented or tested; stock Moonlight's gamepad mouse-emulation option is not evidence of support for the Fire Stick remote.
+
+A Bluetooth keyboard/mouse can pair with the Fire Stick for Moonlight to forward input to Sunshine. Alternatively, peripherals can remain connected directly to the computer when within range. Neither peripheral arrangement has been tested in this session. Keep this separate from remote cursor navigation inside the custom TV browser.

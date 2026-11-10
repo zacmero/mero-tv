@@ -1,5 +1,7 @@
 # Fire TV Stick: device inventory and experiment scope
 
+**Local update, 2026-11-10 UTC:** The current observed build is `PS7717.5746N`, incremental `0036408029828`; SELinux is enforcing and Amazon WebView 138 is active. See [the local session record](local-session-2026-11-10.md). The owner-reported inventory below is preserved as historical evidence.
+
 **Inspection reported by Zac: 2026-11-09.** This document transcribes the supplied settings-screen and terminal results. “Reported” means evidence from this particular device; “published” means specifications or research about its model. No exploit was executed as part of this inventory.
 
 ## Confirmed identity and software
