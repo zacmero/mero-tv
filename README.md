@@ -2,7 +2,9 @@
 
 Fire TV hardware archaeology, a documented root/unlock research track, and a lightweight browser with a personal website library for Zac's TV.
 
-**Status — 2026-11-09:** the device is confirmed as **Fire TV Stick 3rd generation / AFTSSS / sheldonp**. Network ADB works. The observed shell is unprivileged. This repository currently contains research, a local-agent handoff, and a read-only collection tool; the browser APK has not been implemented and no exploit or firmware write has been performed by this project.
+**Status — 2026-11-10:** a first native Mero TV browser APK is implemented and installed on the confirmed **AFTSSS / sheldonp**, Android API 28. The site library starts empty. Build/lint and on-device library checks pass; the owner confirmed remote point-and-click. Local video playback is under validation; personal-site compatibility and reboot durability remain unverified. The current observed build is **PS7717.5746N**. No exploit or firmware write has been performed.
+
+Moonlight 12.2 and Sunshine with CUDA 12.9.1 also provide a working 1080p60 desktop stream. See the [session evidence](docs/local-session-2026-11-10.md) and [browser build/run guide](docs/browser-build.md).
 
 ## Start here
 
@@ -15,7 +17,7 @@ Fire TV hardware archaeology, a documented root/unlock research track, and a lig
 7. [Further experiments](docs/future-experiments.md): custom ROMs, terminal tools, agent displays, and remote PC access.
 8. [Agent conventions](AGENTS.md): evidence and workflow rules for contributors.
 
-## Confirmed baseline
+## Historical owner-reported baseline (2026-11-09)
 
 | Field | Owner-reported value |
 |---|---|
@@ -35,7 +37,7 @@ These are Zac's inspection results, not measurements taken by the remote researc
 
 ### Hardware control
 
-Begin with archaeology. The historical direct Kamakiri route requires Fire OS below 7.2.7.3. The current GhostLock source contains a profile matching this unit's build/incremental/kernel/machine, but marks it **derived-untested**. Treat the unit as a candidate for local validation, not a confirmed successful unlock. A published reproduction on a different build shows a possible temporary-root → controlled preloader change → Kamakiri → TWRP route. [Evidence and exact sources](docs/exploit-paths.md).
+Begin with archaeology. The historical direct Kamakiri route requires Fire OS below 7.2.7.3. The previously inspected GhostLock source contains a profile matching the older PS7715 baseline, marked **derived-untested**; compatibility with the currently observed PS7717 build has not been evaluated. Treat the unit as a candidate for local validation, not a confirmed successful unlock. A published reproduction on a different build shows a possible temporary-root → controlled preloader change → Kamakiri → TWRP route. [Evidence and exact sources](docs/exploit-paths.md).
 
 ### Everyday browser
 
@@ -57,4 +59,4 @@ The script requires an explicit target, checks the model/codename, and saves rep
 
 ## Scope of this handoff
 
-The immediate deliverable is the reproducible research baseline and product plan. Browser implementation, real-device playback benchmarks, GhostLock execution, backup validation, and any firmware changes are work for the local agent with access to the unit. No claim of successful root, unlock, or browser compatibility is made here.
+The first native browser is available for local iteration. Broader website playback, sustained stability, reboot durability, root/unlock, and backup validation remain separate milestones. Read the current session record before device-specific work.

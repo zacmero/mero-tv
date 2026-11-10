@@ -1,6 +1,6 @@
 # Mero TV browser and bookmark library
 
-Research date: **2026-11-09 (America/Sao_Paulo)**. Status: implementation handoff; no browser implemented or tested yet.
+Research date: **2026-11-09 (America/Sao_Paulo)**. **Update 2026-11-10:** first native implementation installed and tested in part; see [build/run guide](browser-build.md) and [session evidence](local-session-2026-11-10.md). The historical planning baseline below is preserved.
 
 ## Goal and device budget
 

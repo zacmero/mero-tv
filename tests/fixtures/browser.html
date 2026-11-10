@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mero controlled browser test</title>
+<style>
+body { background:#172431; color:#fff; font:24px sans-serif; margin:32px; }
+button,a,input { font:inherit; margin:10px; padding:14px; }
+video { display:block; width:640px; max-width:90vw; }
+</style>
+<h1>Mero controlled browser test</h1>
+<button onclick="this.textContent='Click received';document.title='Click received'">Test pointer click</button>
+<a href="next.html">Next page</a>
+<input aria-label="Test text input" placeholder="Type with the remote">
+<p>Video is generated locally; no external media or website requests.</p>
+<video controls preload="metadata" loop src="motion.mp4"></video>
+<button onclick="document.querySelector('video').requestFullscreen()">Video fullscreen</button>
+<button onclick="window.open('next.html')">User-requested new window</button>
+<div style="height:1300px">Scroll down to verify remote scrolling.</div>
+<p>End of scrolling test</p>
+</html>
