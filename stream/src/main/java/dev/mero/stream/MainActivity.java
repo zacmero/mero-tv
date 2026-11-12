@@ -115,7 +115,7 @@ public class MainActivity extends Activity {
         }
         if(video!=null&&video.volume.key(event))return true;if(video!=null&&event.getAction()==android.view.KeyEvent.ACTION_DOWN&&event.getKeyCode()!=android.view.KeyEvent.KEYCODE_BACK)video.interact();return super.dispatchKeyEvent(event);}
     @Override public boolean dispatchTouchEvent(android.view.MotionEvent event){if(video!=null&&event.getAction()==android.view.MotionEvent.ACTION_DOWN)video.interact();return super.dispatchTouchEvent(event);}
-    @Override public void onBackPressed(){generation++;if(video!=null){if(video.dismissControls())return;saveProgress();video.release();video=null;getWindow().getDecorView().setSystemUiVisibility(0);getWindow().clearFlags(128);setContentView(root);}else if(historyOpen){home();}else if(episodes){search();}else super.onBackPressed();}
+    @Override public void onBackPressed(){generation++;if(video!=null){if(video.volume.dismissShortcut()||video.dismissControls())return;saveProgress();video.release();video=null;getWindow().getDecorView().setSystemUiVisibility(0);getWindow().clearFlags(128);setContentView(root);}else if(historyOpen){home();}else if(episodes){search();}else super.onBackPressed();}
     @Override protected void onPause(){if(video!=null){saveProgress();video.pause();}super.onPause();}
     @Override protected void onDestroy(){generation++;progressHandler.removeCallbacks(progressTick);saveProgress();if(video!=null)video.release();worker.shutdownNow();super.onDestroy();}
 }

@@ -11,9 +11,12 @@ final class PlayerVolume {
  final Activity activity;final Player player;final SharedPreferences prefs;
  final LinearLayout hud;final TextView hudText;final ProgressBar hudBar;
  final android.os.Handler handler=new android.os.Handler(android.os.Looper.getMainLooper());
+ boolean remoteMode;
  final Runnable hide=()->hideLevel();
- void hideLevel(){hud.setVisibility(android.view.View.GONE);}
- void showLevel(){hudText.setText("Volume "+Math.round(player.getVolume()*100)+"%");hudBar.setProgress(Math.round(player.getVolume()*100));hud.setVisibility(android.view.View.VISIBLE);handler.removeCallbacks(hide);handler.postDelayed(hide,900);}
+ void hideLevel(){remoteMode=false;hud.setVisibility(android.view.View.GONE);}
+ void showLevel(){showLevel(900);}
+ void showLevel(long timeout){hudText.setText("Volume "+Math.round(player.getVolume()*100)+"%"+(remoteMode?" · ↑ / ↓":""));hudBar.setProgress(Math.round(player.getVolume()*100));hud.setVisibility(android.view.View.VISIBLE);handler.removeCallbacks(hide);handler.postDelayed(hide,timeout);}
+ boolean dismissShortcut(){if(!remoteMode)return false;handler.removeCallbacks(hide);hideLevel();return true;}
  void release(){handler.removeCallbacks(hide);}
  PlayerVolume(Activity activity,Player player,FrameLayout container){this.activity=activity;this.player=player;prefs=activity.getSharedPreferences("player-volume",0);
  hud=new LinearLayout(activity);hud.setOrientation(LinearLayout.VERTICAL);hud.setBackgroundColor(0xe6101b27);hud.setPadding(20,12,20,12);
@@ -24,7 +27,10 @@ final class PlayerVolume {
  void change(float amount){float gain=Math.max(0,Math.min(1,prefs.getFloat("gain",1)+amount));prefs.edit().putFloat("gain",gain).putBoolean("muted",false).apply();apply();showLevel();}
  void mute(){prefs.edit().putBoolean("muted",!prefs.getBoolean("muted",false)).apply();apply();showLevel();}
  boolean key(KeyEvent event){
-  int key=event.getKeyCode();if(key!=KeyEvent.KEYCODE_VOLUME_UP&&key!=KeyEvent.KEYCODE_VOLUME_DOWN&&key!=KeyEvent.KEYCODE_VOLUME_MUTE&&key!=KeyEvent.KEYCODE_MUTE)return false;
+  int key=event.getKeyCode();
+  if(key==KeyEvent.KEYCODE_MENU){if(event.getAction()==KeyEvent.ACTION_DOWN&&event.getRepeatCount()==0){if(remoteMode)hideLevel();else{remoteMode=true;showLevel(3000);}}return true;}
+  if(remoteMode&&(key==KeyEvent.KEYCODE_DPAD_UP||key==KeyEvent.KEYCODE_DPAD_DOWN)){if(event.getAction()==KeyEvent.ACTION_DOWN)change(key==KeyEvent.KEYCODE_DPAD_UP?.05f:-.05f);return true;}
+  if(key!=KeyEvent.KEYCODE_VOLUME_UP&&key!=KeyEvent.KEYCODE_VOLUME_DOWN&&key!=KeyEvent.KEYCODE_VOLUME_MUTE&&key!=KeyEvent.KEYCODE_MUTE)return false;
   if(event.getAction()==KeyEvent.ACTION_DOWN){if(key==KeyEvent.KEYCODE_VOLUME_UP)change(.05f);else if(key==KeyEvent.KEYCODE_VOLUME_DOWN)change(-.05f);else if(event.getRepeatCount()==0)mute();}return true;
  }
  AlertDialog show(){
