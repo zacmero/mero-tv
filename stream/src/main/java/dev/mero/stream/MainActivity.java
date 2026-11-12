@@ -102,9 +102,10 @@ public class MainActivity extends Activity {
         historyOpen=true;episodes=false;posters.show(null);poster.setVisibility(View.INVISIBLE);rows.removeAllViews();org.json.JSONArray entries=new WatchHistory(this).entries();
         for(int i=0;i<entries.length();i++){JSONObject item=entries.optJSONObject(i);if(item==null)continue;
             String title=item.optString("slug").replaceFirst("-[0-9]+$", "").replace('-', ' ');
-            row(title+" // EP "+item.optString("label","?")+" // "+(item.optBoolean("completed")?"Completed":item.optLong("position")/60000+" min")+" // "+item.optString("mode"),()->{
+            Button entry=row(title+" // EP "+item.optString("label","?")+" // "+(item.optBoolean("completed")?"Completed":item.optLong("position")/60000+" min")+" // "+item.optString("mode"),()->{
                 slug=item.optString("slug");mode=item.optString("mode","sub");query.setText(item.optString("query"));episodeLabel=item.optString("label");resumePosition=item.optLong("position");resolve(item.optString("episode"));
             });
+            entry.setOnFocusChangeListener((v,focused)->{if(focused){String id=item.optString("slug");poster.setVisibility(id.isEmpty()?View.INVISIBLE:View.VISIBLE);poster.setContentDescription(title+" poster");posters.show(null,id.isEmpty()?null:Provider.BASE+"/"+id);}});
         }
         status.setText(entries.length()==0?"NO WATCH HISTORY YET":"LAST WATCHED // latest 20 episodes");
         if(rows.getChildCount()>0)rows.getChildAt(0).requestFocus();

@@ -14,12 +14,12 @@ final class PosterPreview {
  int generation;boolean closed;
  PosterPreview(Activity a,ImageView image){activity=a;this.image=image;}
  void show(String url){show(url,null);}
- void show(String url,String detail){int request=++generation;image.setImageDrawable(null);if(url==null||!url.startsWith("https://"))return;
+ void show(String url,String detail){int request=++generation;image.setImageDrawable(null);if((url==null||!url.startsWith("https://"))&&(detail==null||!detail.startsWith("https://")))return;
   String cacheKey=detail==null?url:detail;
   Bitmap existing=cache.get(cacheKey);if(existing!=null){image.setImageBitmap(existing);return;}
-  worker.execute(()->{try{String source=url;
+  worker.execute(()->{try{String source=url==null?"":url;
    if(detail!=null)try{String html=Provider.get(detail,3000);java.util.regex.Matcher metadata=java.util.regex.Pattern.compile("<meta[^>]*property=\"og:image\"[^>]*content=\"([^\"]+)\"",java.util.regex.Pattern.CASE_INSENSITIVE).matcher(html);if(metadata.find()&&metadata.group(1).startsWith("https://"))source=Provider.clean(metadata.group(1));}catch(Exception ignored){/* Search artwork remains a fallback. */}
-   Bitmap bitmap=load(source);if(bitmap==null&&!source.equals(url))bitmap=load(url);final Bitmap decoded=bitmap;activity.runOnUiThread(()->{if(closed)return;if(decoded!=null)cache.put(cacheKey,decoded);if(request==generation)image.setImageBitmap(decoded);});}catch(Exception ignored){/* Keep the menu usable when poster delivery fails. */}});
+   Bitmap bitmap=null;try{if(source.startsWith("https://"))bitmap=load(source);}catch(Exception ignored){/* Try the search image if detail artwork fails. */}if(bitmap==null&&url!=null&&url.startsWith("https://")&&!source.equals(url))bitmap=load(url);final Bitmap decoded=bitmap;activity.runOnUiThread(()->{if(closed)return;if(decoded!=null)cache.put(cacheKey,decoded);if(request==generation)image.setImageBitmap(decoded);});}catch(Exception ignored){/* Keep the menu usable when poster delivery fails. */}});
  }
  static Bitmap load(String url)throws Exception{
   URL target=new URL(url);if(!target.getProtocol().equals("https"))throw new IOException("HTTPS required");

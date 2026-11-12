@@ -5,12 +5,19 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.SystemClock;
 public class StreamChecks extends Instrumentation {
- MainActivity app;
+ MainActivity app;String check;
  @Override public void runOnMainSync(Runnable action){Throwable[] error={null};super.runOnMainSync(()->{try{action.run();}catch(Throwable e){error[0]=e;}});if(error[0]!=null)throw new RuntimeException(error[0]);}
 
- @Override public void onCreate(Bundle args){super.onCreate(args);start();}
+ @Override public void onCreate(Bundle args){super.onCreate(args);check=args==null?null:args.getString("check");start();}
  @Override public void onStart(){Bundle result=new Bundle();try{
   app=(MainActivity)startActivitySync(new Intent(getTargetContext(),MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+  if("history-posters".equals(check)){
+   runOnMainSync(()->{app.posters.cache.evictAll();app.showHistory();if(app.rows.getChildCount()==0)throw new AssertionError("Existing history required");});
+   waitFor(()->app.poster.getDrawable()!=null,12000,"Uncached history detail artwork");
+   runOnMainSync(()->{if(!app.poster.isShown())throw new AssertionError("History poster not visible");android.graphics.Bitmap first=((android.graphics.drawable.BitmapDrawable)app.poster.getDrawable()).getBitmap();if(first.getWidth()>768||first.getHeight()>1152)throw new AssertionError("History poster exceeded decode bounds");app.showHistory();if(app.poster.getDrawable()==null||((android.graphics.drawable.BitmapDrawable)app.poster.getDrawable()).getBitmap()!=first)throw new AssertionError("History did not reuse artwork cache");});
+   result.putString("stream","PASS: uncached Last Watched artwork and cache reuse");finish(Activity.RESULT_OK,result);return;
+  }
+
   runOnMainSync(()->{
    try{android.content.pm.ActivityInfo info=app.getPackageManager().getActivityInfo(new android.content.ComponentName(app,"dev.mero.stream.MainActivity"),0);
     if(!(info.loadIcon(app.getPackageManager()) instanceof android.graphics.drawable.VectorDrawable)||!(info.loadBanner(app.getPackageManager()) instanceof android.graphics.drawable.VectorDrawable))throw new AssertionError("Launcher vector assets missing");
