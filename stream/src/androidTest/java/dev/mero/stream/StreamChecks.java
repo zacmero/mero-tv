@@ -29,12 +29,25 @@ public class StreamChecks extends Instrumentation {
    if(app.video==null||app.video.surface.isControllerFullyVisible())throw new AssertionError("First Back must hide controls");
    app.onBackPressed();if(app.video!=null)throw new AssertionError("Second Back must exit playback");
    if(app.getPreferences(0).getLong("position",0)<10000)throw new AssertionError("Progress not saved");
-   app.resumeButton.performClick();
+   org.json.JSONArray history=new WatchHistory(app).entries();
+   if(history.length()==0||!app.episodeId.equals(history.optJSONObject(0).optString("episode")))throw new AssertionError("Last watched missing current episode");
+   app.showHistory();if(app.rows.getChildCount()==0)throw new AssertionError("History rows missing");app.rows.getChildAt(0).performClick();
   });
   waitFor(()->app.video!=null&&app.video.player.getCurrentPosition()>10000,30000,"Continue watching");
+  runOnMainSync(()->{
+   SubtitleAppearance style=app.video.subtitleAppearance;
+   java.util.Map<String,?> before=style.prefs.getAll();int original=style.choice("size",4);
+   android.app.AlertDialog dialog=style.show(app.video.surface.getSubtitleView());
+   android.widget.Button size=findButton(dialog.getWindow().getDecorView(),"Font size:");
+   if(size==null)throw new AssertionError("Subtitle size control missing");size.performClick();
+   if(new SubtitleAppearance(app).choice("size",4)!=(original+1)%4)throw new AssertionError("Subtitle size not persisted");
+   if(findButton(dialog.getWindow().getDecorView(),"Background:")==null)throw new AssertionError("Subtitle background control missing");
+   dialog.dismiss();android.content.SharedPreferences.Editor restore=style.prefs.edit().clear();for(java.util.Map.Entry<String,?> entry:before.entrySet())restore.putInt(entry.getKey(),(Integer)entry.getValue());restore.apply();style.apply(app.video.surface.getSubtitleView());
+  });
   result.putString("controls","PASS: Back hides then exits; Continue restores position");
-  result.putString("stream","PASS: widescreen Frieren playback, full-window surface, auto-hide, Back and resume");finish(Activity.RESULT_OK,result);
+  result.putString("stream","PASS: widescreen playback, controls, history resume and subtitle appearance persistence");finish(Activity.RESULT_OK,result);
  }catch(Throwable e){result.putString("stream","FAIL: "+e.getMessage());finish(Activity.RESULT_CANCELED,result);}}
+ android.widget.Button findButton(android.view.View view,String prefix){if(view instanceof android.widget.Button&&((android.widget.Button)view).getText().toString().startsWith(prefix))return (android.widget.Button)view;if(view instanceof android.view.ViewGroup){android.view.ViewGroup group=(android.view.ViewGroup)view;for(int i=0;i<group.getChildCount();i++){android.widget.Button found=findButton(group.getChildAt(i),prefix);if(found!=null)return found;}}return null;}
  interface Check {boolean ok();}
  void waitFor(Check c,long timeout,String step)throws Exception{long end=SystemClock.elapsedRealtime()+timeout;while(SystemClock.elapsedRealtime()<end){boolean[] yes={false};runOnMainSync(()->yes[0]=c.ok());if(yes[0])return;Thread.sleep(300);}throw new Exception(step+" timed out");}
 }
