@@ -60,3 +60,7 @@ The script requires an explicit target, checks the model/codename, and saves rep
 ## Scope of this handoff
 
 The first native browser is available for local iteration. Broader website playback, sustained stability, reboot durability, root/unlock, and backup validation remain separate milestones. Read the current session record before device-specific work.
+
+## Applications and milestones
+
+See [the application index](docs/apps/README.md) for separate Mero TV, mero-stream, and host-streaming records. Mero TV development is deferred while the native mero-stream path is evaluated.
