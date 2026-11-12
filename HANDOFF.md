@@ -1,3 +1,5 @@
+**Current priority, 2026-11-12:** mero-stream is the active native anime app; Mero TV development is deferred by the owner. See [app/milestone index](docs/apps/README.md) and [mero-stream architecture and acceptance](docs/apps/mero-stream.md). The owner confirmed the corrected blue/cyan Fire TV Home icon after data-preserving app re-registration, and accepts Menu → Up/Down for local player gain. Amazon documents that dedicated Fire remote volume buttons cannot be mapped in third-party apps. No TV equipment configuration or firmware change accompanies this work.
+
 **Current browser update, 2026-11-11 UTC:** The app is updated with the decoder compatibility correction and signed uBlock Origin Lite2026.1110.1816. See [the reliability record](docs/browser-reliability-2026-11-11.md) for actual filtering/playback evidence and remaining cold-start/performance limits. Earlier pause handoffs are historical.
 
 # Handoff to Zac's local agent

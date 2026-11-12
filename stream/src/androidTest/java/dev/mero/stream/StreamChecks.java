@@ -18,12 +18,35 @@ public class StreamChecks extends Instrumentation {
   });
   runOnMainSync(()->{app.query.setText("sousou no frieren");app.search();});
   waitFor(()->app.rows.getChildCount()>0,20000,"Search results");
+  waitFor(()->app.poster.getDrawable()!=null,10000,"Focused poster preview");
+  runOnMainSync(()->{android.graphics.drawable.BitmapDrawable poster=(android.graphics.drawable.BitmapDrawable)app.poster.getDrawable();if(poster.getBitmap().getWidth()>256||poster.getBitmap().getHeight()>384)throw new AssertionError("Poster decode exceeded bounds");});
   runOnMainSync(()->app.rows.getChildAt(0).performClick());
   waitFor(()->app.episodes&&app.rows.getChildCount()>0,20000,"Episodes");
   runOnMainSync(()->app.rows.getChildAt(0).performClick());
   waitFor(()->app.video!=null,25000,"Stream resolution");
   waitFor(()->app.video!=null&&app.video.player.getCurrentPosition()>15000,40000,"Advancing playback");
-  runOnMainSync(()->app.video.interact());
+  runOnMainSync(()->{
+   app.video.player.pause();long start=app.video.player.getCurrentPosition();
+   app.dispatchKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN,android.view.KeyEvent.KEYCODE_MEDIA_FAST_FORWARD));
+   if(app.video.player.getCurrentPosition()-start!=2000)throw new AssertionError("Forward must seek 2 seconds");
+   app.dispatchKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN,android.view.KeyEvent.KEYCODE_MEDIA_REWIND));
+   if(app.video.player.getCurrentPosition()!=start)throw new AssertionError("Rewind must seek 2 seconds");
+   if(app.video.surface.isControllerFullyVisible())throw new AssertionError("Seek controls did not hide");
+   app.video.interact();android.view.View timeline=app.video.surface.findViewById(androidx.media3.ui.R.id.exo_progress);timeline.requestFocus();
+   app.dispatchKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN,android.view.KeyEvent.KEYCODE_DPAD_RIGHT));
+   app.dispatchKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP,android.view.KeyEvent.KEYCODE_DPAD_RIGHT));
+   app.dispatchKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN,android.view.KeyEvent.KEYCODE_DPAD_CENTER));
+   app.dispatchKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP,android.view.KeyEvent.KEYCODE_DPAD_CENTER));
+   if(app.video.player.getCurrentPosition()-start<=2000)throw new AssertionError("D-pad timeline jump must remain larger than 2 seconds");
+   if(!app.video.player.getPlayWhenReady())throw new AssertionError("Timeline Center did not resume playback");
+  });
+  waitFor(()->app.video!=null&&!app.video.surface.isControllerFullyVisible(),1500,"Timeline confirmation hides controls");
+  runOnMainSync(()->{
+   app.video.interact();android.view.View timeline=app.video.surface.findViewById(androidx.media3.ui.R.id.exo_progress);timeline.requestFocus();
+   app.dispatchKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN,android.view.KeyEvent.KEYCODE_DPAD_LEFT));
+   app.onBackPressed();if(app.video==null||app.video.surface.isControllerFullyVisible())throw new AssertionError("Canceling timeline scrub must hide controls without exiting");
+   app.video.interact();
+  });
   waitFor(()->!app.video.surface.isControllerFullyVisible(),8000,"Controller auto-hide");
   runOnMainSync(()->{if(app.video.player.getVideoSize().height<=0 || (double)app.video.player.getVideoSize().width/app.video.player.getVideoSize().height<1.7)throw new AssertionError("Expected native widescreen source");
    if(app.video.surface.getWidth()!=app.video.view.getWidth()||app.video.surface.getHeight()!=app.video.view.getHeight())throw new AssertionError("Video surface must fill playback window");
@@ -68,7 +91,7 @@ public class StreamChecks extends Instrumentation {
   });
   waitFor(()->app.video.volume.hud.getVisibility()==android.view.View.GONE,2500,"Volume HUD auto-hide");
   result.putString("controls","PASS: Back hides then exits; Continue restores position");
-  result.putString("stream","PASS: widescreen playback, controls, history resume and subtitle placement, volume keys/HUD and Mero TV-compatible launcher assets");finish(Activity.RESULT_OK,result);
+  result.putString("stream","PASS: widescreen playback, controls, history resume and subtitle placement, two-second seeks, timeline resume/hide and bounded poster preview");finish(Activity.RESULT_OK,result);
  }catch(Throwable e){android.util.Log.e("StreamChecks","Acceptance failure",e);result.putString("stream","FAIL: "+e.getMessage());finish(Activity.RESULT_CANCELED,result);}}
  android.widget.Button findButton(android.view.View view,String prefix){if(view instanceof android.widget.Button&&((android.widget.Button)view).getText().toString().startsWith(prefix))return (android.widget.Button)view;if(view instanceof android.view.ViewGroup){android.view.ViewGroup group=(android.view.ViewGroup)view;for(int i=0;i<group.getChildCount();i++){android.widget.Button found=findButton(group.getChildAt(i),prefix);if(found!=null)return found;}}return null;}
  interface Check {boolean ok();}
