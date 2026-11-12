@@ -3,7 +3,7 @@ android {
  namespace 'dev.mero.stream'
  compileSdk 37
  compileSdkMinor 2
- defaultConfig { applicationId 'dev.mero.stream'; minSdk 28; targetSdk 35; versionCode 1; versionName '0.2.0'; testInstrumentationRunner 'dev.mero.stream.StreamChecks' }
+ defaultConfig { applicationId 'dev.mero.stream'; minSdk 28; targetSdk 35; versionCode 2; versionName '0.3.0'; testInstrumentationRunner 'dev.mero.stream.StreamChecks' }
  compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
 }
 
