@@ -108,7 +108,12 @@ public class MainActivity extends Activity {
         if(pos<1000)return;
         getPreferences(0).edit().putString("label",episodeLabel).putString("episode",episodeId).putString("slug",slug).putString("mode",mode).putString("query",query.getText().toString()).putLong("position",pos).apply();resumeButton.setVisibility(View.VISIBLE);
     }
-    @Override public boolean dispatchKeyEvent(android.view.KeyEvent event){if(video!=null&&video.volume.key(event))return true;if(video!=null&&event.getAction()==android.view.KeyEvent.ACTION_DOWN&&event.getKeyCode()!=android.view.KeyEvent.KEYCODE_BACK)video.interact();return super.dispatchKeyEvent(event);}
+    @Override public boolean dispatchKeyEvent(android.view.KeyEvent event){
+        int key=event.getKeyCode();
+        if((getApplicationInfo().flags&android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE)!=0&&event.getAction()==android.view.KeyEvent.ACTION_DOWN&&((key>=19&&key<=23)||key==24||key==25||key==164)){
+            android.content.SharedPreferences diagnostic=getSharedPreferences("remote-diagnostics",0);String name="key"+key;diagnostic.edit().putInt(name,diagnostic.getInt(name,0)+1).apply();
+        }
+        if(video!=null&&video.volume.key(event))return true;if(video!=null&&event.getAction()==android.view.KeyEvent.ACTION_DOWN&&event.getKeyCode()!=android.view.KeyEvent.KEYCODE_BACK)video.interact();return super.dispatchKeyEvent(event);}
     @Override public boolean dispatchTouchEvent(android.view.MotionEvent event){if(video!=null&&event.getAction()==android.view.MotionEvent.ACTION_DOWN)video.interact();return super.dispatchTouchEvent(event);}
     @Override public void onBackPressed(){generation++;if(video!=null){if(video.dismissControls())return;saveProgress();video.release();video=null;getWindow().getDecorView().setSystemUiVisibility(0);getWindow().clearFlags(128);setContentView(root);}else if(historyOpen){home();}else if(episodes){search();}else super.onBackPressed();}
     @Override protected void onPause(){if(video!=null){saveProgress();video.pause();}super.onPause();}

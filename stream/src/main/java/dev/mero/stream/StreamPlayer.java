@@ -32,7 +32,7 @@ final class StreamPlayer {
         activity=a;subtitleAppearance=new SubtitleAppearance(a);
         DefaultHttpDataSource.Factory http=new DefaultHttpDataSource.Factory().setUserAgent("Mozilla/5.0")
             .setDefaultRequestProperties(Collections.singletonMap("Referer",referer));
-        player=new ExoPlayer.Builder(a).setMediaSourceFactory(new DefaultMediaSourceFactory(http)).build();volume=new PlayerVolume(a,player);
+        player=new ExoPlayer.Builder(a).setMediaSourceFactory(new DefaultMediaSourceFactory(http)).build();
         view=new FrameLayout(a);view.setBackgroundColor(0xff080e15);
         bar=new LinearLayout(a);bar.setBackgroundColor(0xdd080e15);
         for(int type:new int[]{C.TRACK_TYPE_TEXT,C.TRACK_TYPE_AUDIO,C.TRACK_TYPE_VIDEO}) {
@@ -47,6 +47,7 @@ final class StreamPlayer {
         view.addView(surface,new FrameLayout.LayoutParams(-1,-1));
         LinearLayout bottom=surface.findViewById(androidx.media3.ui.R.id.exo_basic_controls);
         bottom.addView(bar,0);
+        volume=new PlayerVolume(a,player,view);
         surface.findViewById(androidx.media3.ui.R.id.exo_settings).setVisibility(android.view.View.GONE);
         view.setFocusable(true);
         view.setOnKeyListener((v,key,event)->{if(key==KeyEvent.KEYCODE_DPAD_UP||key==KeyEvent.KEYCODE_DPAD_DOWN||key==KeyEvent.KEYCODE_DPAD_CENTER){interact();return false;}return false;});
@@ -82,5 +83,5 @@ final class StreamPlayer {
     }
     boolean dismissControls(){if(surface.isControllerFullyVisible()){surface.hideController();surface.requestFocus();return true;}return false;}
     void pause(){player.pause();}
-    void release(){handler.removeCallbacks(hide);player.release();}
+    void release(){handler.removeCallbacks(hide);volume.release();player.release();}
 }

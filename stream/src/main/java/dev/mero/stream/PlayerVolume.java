@@ -6,18 +6,26 @@ import android.view.KeyEvent;
 import android.widget.*;
 import androidx.media3.common.Player;
 
-/** Local gain fallback for fixed-volume HDMI devices; never boosts above source gain. */
+/** Local gain for received volume keys, with a brief non-interactive level HUD. */
 final class PlayerVolume {
  final Activity activity;final Player player;final SharedPreferences prefs;
- PlayerVolume(Activity activity,Player player){this.activity=activity;this.player=player;prefs=activity.getSharedPreferences("player-volume",0);apply();}
+ final LinearLayout hud;final TextView hudText;final ProgressBar hudBar;
+ final android.os.Handler handler=new android.os.Handler(android.os.Looper.getMainLooper());
+ final Runnable hide=()->hideLevel();
+ void hideLevel(){hud.setVisibility(android.view.View.GONE);}
+ void showLevel(){hudText.setText("Volume "+Math.round(player.getVolume()*100)+"%");hudBar.setProgress(Math.round(player.getVolume()*100));hud.setVisibility(android.view.View.VISIBLE);handler.removeCallbacks(hide);handler.postDelayed(hide,900);}
+ void release(){handler.removeCallbacks(hide);}
+ PlayerVolume(Activity activity,Player player,FrameLayout container){this.activity=activity;this.player=player;prefs=activity.getSharedPreferences("player-volume",0);
+ hud=new LinearLayout(activity);hud.setOrientation(LinearLayout.VERTICAL);hud.setBackgroundColor(0xe6101b27);hud.setPadding(20,12,20,12);
+ hudText=new TextView(activity);hudText.setTextColor(0xff8cceff);hudText.setTextSize(17);hud.addView(hudText);
+ hudBar=new ProgressBar(activity,null,android.R.attr.progressBarStyleHorizontal);hudBar.setMax(100);hudBar.setProgressTintList(android.content.res.ColorStateList.valueOf(0xff6abfff));hud.addView(hudBar);
+ FrameLayout.LayoutParams layout=new FrameLayout.LayoutParams(Math.round(210*activity.getResources().getDisplayMetrics().density),-2,android.view.Gravity.RIGHT|android.view.Gravity.CENTER_VERTICAL);layout.rightMargin=24;container.addView(hud,layout);hud.setVisibility(android.view.View.GONE);apply();}
  void apply(){player.setVolume(prefs.getBoolean("muted",false)?0:Math.max(0,Math.min(1,prefs.getFloat("gain",1))));}
- void change(float amount){float gain=Math.max(0,Math.min(1,prefs.getFloat("gain",1)+amount));prefs.edit().putFloat("gain",gain).putBoolean("muted",false).apply();apply();}
- void mute(){prefs.edit().putBoolean("muted",!prefs.getBoolean("muted",false)).apply();apply();}
+ void change(float amount){float gain=Math.max(0,Math.min(1,prefs.getFloat("gain",1)+amount));prefs.edit().putFloat("gain",gain).putBoolean("muted",false).apply();apply();showLevel();}
+ void mute(){prefs.edit().putBoolean("muted",!prefs.getBoolean("muted",false)).apply();apply();showLevel();}
  boolean key(KeyEvent event){
   int key=event.getKeyCode();if(key!=KeyEvent.KEYCODE_VOLUME_UP&&key!=KeyEvent.KEYCODE_VOLUME_DOWN&&key!=KeyEvent.KEYCODE_VOLUME_MUTE&&key!=KeyEvent.KEYCODE_MUTE)return false;
-  AudioManager audio=(AudioManager)activity.getSystemService(Context.AUDIO_SERVICE);
-  if(audio==null||!audio.isVolumeFixed())return false;
-  if(event.getAction()==KeyEvent.ACTION_DOWN){if(key==KeyEvent.KEYCODE_VOLUME_UP)change(.05f);else if(key==KeyEvent.KEYCODE_VOLUME_DOWN)change(-.05f);else if(event.getRepeatCount()==0)mute();Toast.makeText(activity,"Player volume: "+Math.round(player.getVolume()*100)+"%",Toast.LENGTH_SHORT).show();}return true;
+  if(event.getAction()==KeyEvent.ACTION_DOWN){if(key==KeyEvent.KEYCODE_VOLUME_UP)change(.05f);else if(key==KeyEvent.KEYCODE_VOLUME_DOWN)change(-.05f);else if(event.getRepeatCount()==0)mute();}return true;
  }
  AlertDialog show(){
   LinearLayout layout=new LinearLayout(activity);layout.setOrientation(LinearLayout.VERTICAL);
