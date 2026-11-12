@@ -29,7 +29,8 @@ public class MainActivity extends Activity {
     void home() {
         video=null; episodes=false;
         root=new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setPadding(36,20,36,20); root.setBackgroundColor(0xff080e15);
-        root.addView(text("mero-stream // anime terminal",26));
+        LinearLayout brand=new LinearLayout(this);brand.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        ImageView logo=new ImageView(this);logo.setImageResource(dev.mero.stream.R.drawable.stream_logo);logo.setContentDescription("mero-stream logo");brand.addView(logo,new LinearLayout.LayoutParams(dp(52),dp(52)));brand.addView(text("mero-stream // anime terminal",26));root.addView(brand);
         query=new EditText(this); query.setSingleLine(true); query.setTextColor(Color.WHITE); query.setHintTextColor(0xff95a5b0); query.setHint("Search anime_ "); query.setTypeface(Typeface.MONOSPACE); root.addView(query);
         Button search=new Button(this); search.setText("> SEARCH"); search.setOnClickListener(v->search());root.addView(search);
         query.setOnEditorActionListener((v,a,e)->{search();return true;});

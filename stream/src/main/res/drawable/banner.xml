@@ -1,1 +1,4 @@
-<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle"><solid android:color="#081c22"/><size android:width="320dp" android:height="180dp"/><stroke android:width="3dp" android:color="#71f7bc"/></shape>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+ <item><shape><solid android:color="#0A1420"/><size android:width="320dp" android:height="180dp"/><stroke android:width="2dp" android:color="#459CDE"/></shape></item>
+ <item android:drawable="@drawable/stream_logo" android:width="144dp" android:height="144dp" android:gravity="center"/>
+</layer-list>
