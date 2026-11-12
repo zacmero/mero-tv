@@ -19,7 +19,7 @@ public class StreamChecks extends Instrumentation {
   runOnMainSync(()->{app.query.setText("sousou no frieren");app.search();});
   waitFor(()->app.rows.getChildCount()>0,20000,"Search results");
   waitFor(()->app.poster.getDrawable()!=null,10000,"Focused poster preview");
-  runOnMainSync(()->{android.graphics.drawable.BitmapDrawable poster=(android.graphics.drawable.BitmapDrawable)app.poster.getDrawable();if(poster.getBitmap().getWidth()>256||poster.getBitmap().getHeight()>384)throw new AssertionError("Poster decode exceeded bounds");});
+  runOnMainSync(()->{android.graphics.drawable.BitmapDrawable poster=(android.graphics.drawable.BitmapDrawable)app.poster.getDrawable();if(poster.getBitmap().getWidth()>768||poster.getBitmap().getHeight()>1152)throw new AssertionError("Poster decode exceeded bounds");if(poster.getBitmap().getWidth()<300||poster.getBitmap().getHeight()<450)throw new AssertionError("Expected higher-resolution detail poster");if(app.poster.getWidth()<app.root.getWidth()*.3||app.poster.getHeight()<app.root.getHeight()*.65)throw new AssertionError("Poster panel is too small");});
   runOnMainSync(()->app.rows.getChildAt(0).performClick());
   waitFor(()->app.episodes&&app.rows.getChildCount()>0,20000,"Episodes");
   runOnMainSync(()->app.rows.getChildAt(0).performClick());
@@ -36,14 +36,19 @@ public class StreamChecks extends Instrumentation {
    app.dispatchKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN,android.view.KeyEvent.KEYCODE_DPAD_RIGHT));
    app.dispatchKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP,android.view.KeyEvent.KEYCODE_DPAD_RIGHT));
    app.dispatchKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN,android.view.KeyEvent.KEYCODE_DPAD_CENTER));
-   app.dispatchKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP,android.view.KeyEvent.KEYCODE_DPAD_CENTER));
+
    if(app.video.player.getCurrentPosition()-start<=2000)throw new AssertionError("D-pad timeline jump must remain larger than 2 seconds");
    if(!app.video.player.getPlayWhenReady())throw new AssertionError("Timeline Center did not resume playback");
   });
   waitFor(()->app.video!=null&&!app.video.surface.isControllerFullyVisible(),1500,"Timeline confirmation hides controls");
+  Thread.sleep(200);
+  runOnMainSync(()->{
+   app.dispatchKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP,android.view.KeyEvent.KEYCODE_DPAD_CENTER));
+   if(app.video.surface.findViewById(androidx.media3.ui.R.id.exo_controller).getVisibility()!=android.view.View.GONE||app.video.bar.isShown()||app.video.volume.hud.isShown())throw new AssertionError("Center release reopened playback chrome");
+  });
   runOnMainSync(()->{
    app.video.interact();android.view.View timeline=app.video.surface.findViewById(androidx.media3.ui.R.id.exo_progress);timeline.requestFocus();
-   app.dispatchKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN,android.view.KeyEvent.KEYCODE_DPAD_LEFT));
+   app.dispatchKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN,android.view.KeyEvent.KEYCODE_DPAD_RIGHT));
    app.onBackPressed();if(app.video==null||app.video.surface.isControllerFullyVisible())throw new AssertionError("Canceling timeline scrub must hide controls without exiting");
    app.video.interact();
   });
@@ -91,7 +96,7 @@ public class StreamChecks extends Instrumentation {
   });
   waitFor(()->app.video.volume.hud.getVisibility()==android.view.View.GONE,2500,"Volume HUD auto-hide");
   result.putString("controls","PASS: Back hides then exits; Continue restores position");
-  result.putString("stream","PASS: widescreen playback, controls, history resume and subtitle placement, two-second seeks, timeline resume/hide and bounded poster preview");finish(Activity.RESULT_OK,result);
+  result.putString("stream","PASS: widescreen playback, controls, history resume and subtitle placement, two-second seeks, clean Center down/up confirmation and large bounded poster panel");finish(Activity.RESULT_OK,result);
  }catch(Throwable e){android.util.Log.e("StreamChecks","Acceptance failure",e);result.putString("stream","FAIL: "+e.getMessage());finish(Activity.RESULT_CANCELED,result);}}
  android.widget.Button findButton(android.view.View view,String prefix){if(view instanceof android.widget.Button&&((android.widget.Button)view).getText().toString().startsWith(prefix))return (android.widget.Button)view;if(view instanceof android.view.ViewGroup){android.view.ViewGroup group=(android.view.ViewGroup)view;for(int i=0;i<group.getChildCount();i++){android.widget.Button found=findButton(group.getChildAt(i),prefix);if(found!=null)return found;}}return null;}
  interface Check {boolean ok();}
