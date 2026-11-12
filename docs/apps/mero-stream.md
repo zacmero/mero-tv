@@ -48,3 +48,11 @@ Installed instrumentation passed `widescreen playback, controls, history resume 
 ## Subtitle placement — 2026-11-12
 
 Appearance includes Vertical position: Low (5%), Standard (10%, default), Higher (15%), High (20%), Middle (35%). Percentages are the bottom margin relative to the video subtitle viewport. Text cues are anchored by their lower edge at the chosen height, overriding embedded vertical positions rather than relying only on padding that positioned WebVTT cues can ignore. Source cue data is retained so changes immediately re-render the active text. Bitmap subtitles retain source placement. Settings share the separate caption preference file and the preview updates immediately.
+
+## Volume routing — 2026-11-12
+
+The activity explicitly selects the media volume stream. On a device reporting fixed system volume, received volume up/down/mute keys adjust local ExoPlayer gain in 5% steps; on other devices the normal Android key handling remains active. Audio → Player volume provides Quieter, Louder and Mute/unmute independently of OS mixer support. Gain/mute are saved separately; unmute restores the prior gain, bounded to 0–100% without amplification.
+
+This does not establish that a physical Fire TV remote sends volume key events to the APK. Amazon equipment control may direct those buttons to the TV/receiver, independently of the app. Device audio output was inspected privately; no authoritative fixed-volume flag was exposed by the captured dumpsys summary. Physical remote routing remains unverified. Primary guidance: [Android fixed-volume outputs](https://developer.android.com/media/platform/output), [Amazon remote equipment control](https://digprjsurvey.amazon.co.uk/csad/help/node/TcKn40TSZWBWHIOaFm).
+
+Build/lint and installed live-playback instrumentation passed, including subtitle-placement control/persistence, history resume, local volume decrease and mute/unmute. The test restores the prior gain/mute and caption preferences. Physical volume buttons were not tested; the owner has not yet checked whether they work outside mero-stream. No claim of a confirmed IR/CEC or TV-equipment setup fault is made.

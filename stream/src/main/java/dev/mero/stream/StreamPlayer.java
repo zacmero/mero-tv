@@ -22,6 +22,7 @@ final class StreamPlayer {
     final ExoPlayer player;
     final Activity activity;
     final SubtitleAppearance subtitleAppearance;
+    final PlayerVolume volume;
     final android.os.Handler handler=new android.os.Handler(android.os.Looper.getMainLooper());
     final Runnable hide=()->surfaceHide();
     void surfaceHide(){surface.hideController();}
@@ -31,7 +32,7 @@ final class StreamPlayer {
         activity=a;subtitleAppearance=new SubtitleAppearance(a);
         DefaultHttpDataSource.Factory http=new DefaultHttpDataSource.Factory().setUserAgent("Mozilla/5.0")
             .setDefaultRequestProperties(Collections.singletonMap("Referer",referer));
-        player=new ExoPlayer.Builder(a).setMediaSourceFactory(new DefaultMediaSourceFactory(http)).build();
+        player=new ExoPlayer.Builder(a).setMediaSourceFactory(new DefaultMediaSourceFactory(http)).build();volume=new PlayerVolume(a,player);
         view=new FrameLayout(a);view.setBackgroundColor(0xff080e15);
         bar=new LinearLayout(a);bar.setBackgroundColor(0xdd080e15);
         for(int type:new int[]{C.TRACK_TYPE_TEXT,C.TRACK_TYPE_AUDIO,C.TRACK_TYPE_VIDEO}) {
@@ -70,6 +71,7 @@ final class StreamPlayer {
                 labels.add(type==C.TRACK_TYPE_VIDEO?(f.height>0?f.height+"p":"Video"):(f.label!=null?f.label:(f.language!=null?f.language:"Track "+(i+1))));
                 actions.add(()->player.setTrackSelectionParameters(player.getTrackSelectionParameters().buildUpon().setTrackTypeDisabled(type,false).setOverrideForType(new TrackSelectionOverride(group.getMediaTrackGroup(),index)).build()));
             }
+        if(type==C.TRACK_TYPE_AUDIO){labels.add("Player volume");actions.add(()->volume.show());}
         if(type==C.TRACK_TYPE_TEXT){labels.add("Appearance / font size");actions.add(()->subtitleAppearance.show(surface.getSubtitleView()));}
         LinearLayout choices=new LinearLayout(activity);choices.setOrientation(LinearLayout.VERTICAL);
         ScrollView scroll=new ScrollView(activity);scroll.addView(choices);

@@ -26,7 +26,7 @@ public class MainActivity extends Activity {
     final android.os.Handler progressHandler=new android.os.Handler(android.os.Looper.getMainLooper());
     final Runnable progressTick=new Runnable(){public void run(){saveProgress();progressHandler.postDelayed(this,5000);}};
     interface Job { void run() throws Exception; }
-    @Override public void onCreate(Bundle b) { super.onCreate(b); home(); progressHandler.postDelayed(progressTick,5000); }
+    @Override public void onCreate(Bundle b) { super.onCreate(b);setVolumeControlStream(android.media.AudioManager.STREAM_MUSIC); home(); progressHandler.postDelayed(progressTick,5000); }
     TextView text(String s, int size) { TextView t = new TextView(this); t.setText(s); t.setTextSize(size); t.setTextColor(0xff71f7bc); t.setTypeface(Typeface.MONOSPACE); t.setPadding(12,10,12,10); return t; }
     void home() {
         video=null; episodes=false;historyOpen=false;
@@ -108,7 +108,7 @@ public class MainActivity extends Activity {
         if(pos<1000)return;
         getPreferences(0).edit().putString("label",episodeLabel).putString("episode",episodeId).putString("slug",slug).putString("mode",mode).putString("query",query.getText().toString()).putLong("position",pos).apply();resumeButton.setVisibility(View.VISIBLE);
     }
-    @Override public boolean dispatchKeyEvent(android.view.KeyEvent event){if(video!=null&&event.getAction()==android.view.KeyEvent.ACTION_DOWN&&event.getKeyCode()!=android.view.KeyEvent.KEYCODE_BACK)video.interact();return super.dispatchKeyEvent(event);}
+    @Override public boolean dispatchKeyEvent(android.view.KeyEvent event){if(video!=null&&video.volume.key(event))return true;if(video!=null&&event.getAction()==android.view.KeyEvent.ACTION_DOWN&&event.getKeyCode()!=android.view.KeyEvent.KEYCODE_BACK)video.interact();return super.dispatchKeyEvent(event);}
     @Override public boolean dispatchTouchEvent(android.view.MotionEvent event){if(video!=null&&event.getAction()==android.view.MotionEvent.ACTION_DOWN)video.interact();return super.dispatchTouchEvent(event);}
     @Override public void onBackPressed(){generation++;if(video!=null){if(video.dismissControls())return;saveProgress();video.release();video=null;getWindow().getDecorView().setSystemUiVisibility(0);getWindow().clearFlags(128);setContentView(root);}else if(historyOpen){home();}else if(episodes){search();}else super.onBackPressed();}
     @Override protected void onPause(){if(video!=null){saveProgress();video.pause();}super.onPause();}

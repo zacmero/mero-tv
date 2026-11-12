@@ -35,6 +35,12 @@ public class StreamChecks extends Instrumentation {
   });
   waitFor(()->app.video!=null&&app.video.player.getCurrentPosition()>10000,30000,"Continue watching");
   runOnMainSync(()->{
+   PlayerVolume volume=app.video.volume;float gain=volume.prefs.getFloat("gain",1);boolean muted=volume.prefs.getBoolean("muted",false);
+   volume.prefs.edit().putFloat("gain",1).putBoolean("muted",false).apply();volume.apply();
+   android.app.AlertDialog volumeDialog=volume.show();android.widget.Button quieter=findButton(volumeDialog.getWindow().getDecorView(),"Quieter");
+   if(quieter==null)throw new AssertionError("Volume control missing");quieter.performClick();
+   if(app.video.player.getVolume()>=1)throw new AssertionError("Player volume did not decrease");volume.mute();if(app.video.player.getVolume()!=0)throw new AssertionError("Mute failed");volume.mute();if(app.video.player.getVolume()<=0)throw new AssertionError("Unmute failed");
+   volumeDialog.dismiss();volume.prefs.edit().putFloat("gain",gain).putBoolean("muted",muted).apply();volume.apply();
    SubtitleAppearance style=app.video.subtitleAppearance;
    java.util.Map<String,?> before=style.prefs.getAll();int original=style.choice("size",4);
    android.app.AlertDialog dialog=style.show(app.video.surface.getSubtitleView());
@@ -49,7 +55,7 @@ public class StreamChecks extends Instrumentation {
    dialog.dismiss();android.content.SharedPreferences.Editor restore=style.prefs.edit().clear();for(java.util.Map.Entry<String,?> entry:before.entrySet())restore.putInt(entry.getKey(),(Integer)entry.getValue());restore.apply();style.apply(app.video.surface.getSubtitleView());
   });
   result.putString("controls","PASS: Back hides then exits; Continue restores position");
-  result.putString("stream","PASS: widescreen playback, controls, history resume and subtitle appearance/placement persistence");finish(Activity.RESULT_OK,result);
+  result.putString("stream","PASS: widescreen playback, controls, history resume and subtitle placement and player volume");finish(Activity.RESULT_OK,result);
  }catch(Throwable e){result.putString("stream","FAIL: "+e.getMessage());finish(Activity.RESULT_CANCELED,result);}}
  android.widget.Button findButton(android.view.View view,String prefix){if(view instanceof android.widget.Button&&((android.widget.Button)view).getText().toString().startsWith(prefix))return (android.widget.Button)view;if(view instanceof android.view.ViewGroup){android.view.ViewGroup group=(android.view.ViewGroup)view;for(int i=0;i<group.getChildCount();i++){android.widget.Button found=findButton(group.getChildAt(i),prefix);if(found!=null)return found;}}return null;}
  interface Check {boolean ok();}
