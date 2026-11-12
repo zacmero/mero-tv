@@ -42,10 +42,14 @@ public class StreamChecks extends Instrumentation {
    if(size==null)throw new AssertionError("Subtitle size control missing");size.performClick();
    if(new SubtitleAppearance(app).choice("size",4)!=(original+1)%4)throw new AssertionError("Subtitle size not persisted");
    if(findButton(dialog.getWindow().getDecorView(),"Background:")==null)throw new AssertionError("Subtitle background control missing");
+   android.widget.Button placement=findButton(dialog.getWindow().getDecorView(),"Vertical position:");
+   if(placement==null)throw new AssertionError("Subtitle placement control missing");
+   int oldPlacement=style.choice("position",5);placement.performClick();
+   if(new SubtitleAppearance(app).choice("position",5)!=(oldPlacement+1)%5)throw new AssertionError("Placement not persisted");
    dialog.dismiss();android.content.SharedPreferences.Editor restore=style.prefs.edit().clear();for(java.util.Map.Entry<String,?> entry:before.entrySet())restore.putInt(entry.getKey(),(Integer)entry.getValue());restore.apply();style.apply(app.video.surface.getSubtitleView());
   });
   result.putString("controls","PASS: Back hides then exits; Continue restores position");
-  result.putString("stream","PASS: widescreen playback, controls, history resume and subtitle appearance persistence");finish(Activity.RESULT_OK,result);
+  result.putString("stream","PASS: widescreen playback, controls, history resume and subtitle appearance/placement persistence");finish(Activity.RESULT_OK,result);
  }catch(Throwable e){result.putString("stream","FAIL: "+e.getMessage());finish(Activity.RESULT_CANCELED,result);}}
  android.widget.Button findButton(android.view.View view,String prefix){if(view instanceof android.widget.Button&&((android.widget.Button)view).getText().toString().startsWith(prefix))return (android.widget.Button)view;if(view instanceof android.view.ViewGroup){android.view.ViewGroup group=(android.view.ViewGroup)view;for(int i=0;i<group.getChildCount();i++){android.widget.Button found=findButton(group.getChildAt(i),prefix);if(found!=null)return found;}}return null;}
  interface Check {boolean ok();}

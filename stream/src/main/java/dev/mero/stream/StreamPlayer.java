@@ -40,7 +40,7 @@ final class StreamPlayer {
         }
         surface=new PlayerView(a);surface.setPlayer(player);surface.setKeepScreenOn(true);
         ((androidx.media3.ui.PlayerControlView)surface.findViewById(androidx.media3.ui.R.id.exo_controller)).setAnimationEnabled(false);
-        subtitleAppearance.apply(surface.getSubtitleView());
+        subtitleAppearance.bind(surface.getSubtitleView());
         surface.setControllerShowTimeoutMs(4000);surface.setControllerAutoShow(false);
 
         view.addView(surface,new FrameLayout.LayoutParams(-1,-1));
@@ -57,7 +57,7 @@ final class StreamPlayer {
                 .setLanguage(s.optString("srclang","und")).setLabel(s.optString("label","Subtitles"))
                 .setSelectionFlags(s.optBoolean("default")?C.SELECTION_FLAG_DEFAULT:0).build());
         }
-        player.addListener(new Player.Listener(){@Override public void onPlayerError(PlaybackException error){failure.run();}});
+        player.addListener(new Player.Listener(){@Override public void onCues(androidx.media3.common.text.CueGroup cues){subtitleAppearance.onCues(cues.cues);} @Override public void onPlayerError(PlaybackException error){failure.run();}});
         player.setMediaItem(new MediaItem.Builder().setUri(url).setSubtitleConfigurations(subs).build());
         player.prepare();player.play();interact();
     }

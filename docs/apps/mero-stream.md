@@ -44,3 +44,7 @@ Subtitles → Appearance / font size opens a remote-friendly menu with a sample 
 Last Watched lists the latest 20 episode/source-mode entries with show, episode, SUB/DUB, completion status or saved minutes. Selecting an entry resolves a new stream and resumes its position. Rewatching an episode updates its existing entry. Raw stream URLs are never stored. `WatchHistory` owns bounded persistence; `SubtitleAppearance` owns caption preferences/preview; both remain independent of provider extraction.
 
 Installed instrumentation passed `widescreen playback, controls, history resume and subtitle appearance persistence`: live playback, saved history entry and selection/resume, font-size button activation and persistence across a new settings instance, and background-control presence. The test restores the previous caption choices. Build/lint passed. This does not establish every caption format or every appearance combination visually.
+
+## Subtitle placement — 2026-11-12
+
+Appearance includes Vertical position: Low (5%), Standard (10%, default), Higher (15%), High (20%), Middle (35%). Percentages are the bottom margin relative to the video subtitle viewport. Text cues are anchored by their lower edge at the chosen height, overriding embedded vertical positions rather than relying only on padding that positioned WebVTT cues can ignore. Source cue data is retained so changes immediately re-render the active text. Bitmap subtitles retain source placement. Settings share the separate caption preference file and the preview updates immediately.
