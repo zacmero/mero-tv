@@ -22,14 +22,14 @@ public class MainActivity extends Activity {
     final ExecutorService worker = Executors.newSingleThreadExecutor();
     final String base = "https://hianime.at";
     LinearLayout root, rows; EditText query; TextView status; StreamPlayer video;
-    int generation; String mode="sub"; String slug; boolean episodes; String episodeId=""; long resumePosition; Button resumeButton;
+    int generation; String mode="sub"; String slug; boolean episodes; String episodeId="",episodeLabel=""; boolean historyOpen; long resumePosition; Button resumeButton;
     final android.os.Handler progressHandler=new android.os.Handler(android.os.Looper.getMainLooper());
     final Runnable progressTick=new Runnable(){public void run(){saveProgress();progressHandler.postDelayed(this,5000);}};
     interface Job { void run() throws Exception; }
     @Override public void onCreate(Bundle b) { super.onCreate(b); home(); progressHandler.postDelayed(progressTick,5000); }
     TextView text(String s, int size) { TextView t = new TextView(this); t.setText(s); t.setTextSize(size); t.setTextColor(0xff71f7bc); t.setTypeface(Typeface.MONOSPACE); t.setPadding(12,10,12,10); return t; }
     void home() {
-        video=null; episodes=false;
+        video=null; episodes=false;historyOpen=false;
         root=new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setPadding(36,20,36,20); root.setBackgroundColor(0xff080e15);
         LinearLayout brand=new LinearLayout(this);brand.setGravity(android.view.Gravity.CENTER_VERTICAL);
         ImageView logo=new ImageView(this);logo.setImageResource(dev.mero.stream.R.drawable.stream_logo);logo.setContentDescription("mero-stream logo");brand.addView(logo,new LinearLayout.LayoutParams(dp(52),dp(52)));brand.addView(text("mero-stream // anime terminal",26));root.addView(brand);
@@ -39,7 +39,8 @@ public class MainActivity extends Activity {
         Button language=new Button(this);FocusStyle.apply(language);language.setText("SOURCE AUDIO: SUB");language.setOnClickListener(v->{mode=mode.equals("sub")?"dub":"sub";language.setText("SOURCE AUDIO: "+mode.toUpperCase(java.util.Locale.ROOT));});root.addView(language);
         resumeButton=new Button(this);FocusStyle.apply(resumeButton);resumeButton.setText("Continue watching");
         resumeButton.setVisibility(getPreferences(0).contains("episode")?View.VISIBLE:View.GONE);
-        resumeButton.setOnClickListener(v->{android.content.SharedPreferences p=getPreferences(0);mode=p.getString("mode","sub");slug=p.getString("slug","");query.setText(p.getString("query",""));resumePosition=p.getLong("position",0);resolve(p.getString("episode",""));});root.addView(resumeButton);
+        resumeButton.setOnClickListener(v->{android.content.SharedPreferences p=getPreferences(0);mode=p.getString("mode","sub");slug=p.getString("slug","");query.setText(p.getString("query",""));episodeLabel=p.getString("label","");resumePosition=p.getLong("position",0);resolve(p.getString("episode",""));});root.addView(resumeButton);
+        Button watched=new Button(this);FocusStyle.apply(watched);watched.setText("Last watched");watched.setOnClickListener(v->showHistory());root.addView(watched);
         status=text("READY // enter a title",16);root.addView(status);
         ScrollView scroll=new ScrollView(this); rows=new LinearLayout(this); rows.setOrientation(LinearLayout.VERTICAL);scroll.addView(rows);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));setContentView(root);
     }
@@ -71,7 +72,7 @@ public class MainActivity extends Activity {
             JSONObject json=new JSONObject(get(base+"/api/theme/episode/list/"+id.substring(id.lastIndexOf('-')+1)));
             String html=json.optString("html");Matcher m=Pattern.compile("data-number=\"([^\"]*)\"[^>]*data-id=\"([0-9]+)\"").matcher(html);
             List<String[]> found=new ArrayList<>();while(m.find())found.add(new String[]{m.group(1),m.group(2)});
-            runOnUiThread(()->{rows.removeAllViews();for(String[] x:found)row("EP "+x[0]+" > PLAY",()->resolve(x[1]));status.setText(found.size()+" EPISODES // "+mode.toUpperCase(java.util.Locale.ROOT));if(rows.getChildCount()>0)rows.getChildAt(0).requestFocus();});
+            runOnUiThread(()->{rows.removeAllViews();for(String[] x:found)row("EP "+x[0]+" > PLAY",()->{episodeLabel=x[0];resolve(x[1]);});status.setText(found.size()+" EPISODES // "+mode.toUpperCase(java.util.Locale.ROOT));if(rows.getChildCount()>0)rows.getChildAt(0).requestFocus();});
         });
     }
     void resolve(String id) {
@@ -90,14 +91,26 @@ public class MainActivity extends Activity {
         });video.player.seekTo(resumePosition);resumePosition=0;setContentView(video.view);video.surface.requestFocus();
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN|View.SYSTEM_UI_FLAG_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
     }
+    void showHistory(){
+        historyOpen=true;episodes=false;rows.removeAllViews();org.json.JSONArray entries=new WatchHistory(this).entries();
+        for(int i=0;i<entries.length();i++){JSONObject item=entries.optJSONObject(i);if(item==null)continue;
+            String title=item.optString("slug").replaceFirst("-[0-9]+$", "").replace('-', ' ');
+            row(title+" // EP "+item.optString("label","?")+" // "+(item.optBoolean("completed")?"Completed":item.optLong("position")/60000+" min")+" // "+item.optString("mode"),()->{
+                slug=item.optString("slug");mode=item.optString("mode","sub");query.setText(item.optString("query"));episodeLabel=item.optString("label");resumePosition=item.optLong("position");resolve(item.optString("episode"));
+            });
+        }
+        status.setText(entries.length()==0?"NO WATCH HISTORY YET":"LAST WATCHED // latest 20 episodes");
+        if(rows.getChildCount()>0)rows.getChildAt(0).requestFocus();
+    }
     void saveProgress(){if(video==null||episodeId.isEmpty())return;long pos=video.player.getCurrentPosition(),duration=video.player.getDuration();
+        if(pos>=1000)new WatchHistory(this).save(episodeId,slug==null?"":slug,query.getText().toString(),mode,episodeLabel,pos,duration>0&&pos>=duration-5000);
         if(duration>0&&pos>=duration-5000){getPreferences(0).edit().clear().apply();resumeButton.setVisibility(View.GONE);return;}
         if(pos<1000)return;
-        getPreferences(0).edit().putString("episode",episodeId).putString("slug",slug).putString("mode",mode).putString("query",query.getText().toString()).putLong("position",pos).apply();resumeButton.setVisibility(View.VISIBLE);
+        getPreferences(0).edit().putString("label",episodeLabel).putString("episode",episodeId).putString("slug",slug).putString("mode",mode).putString("query",query.getText().toString()).putLong("position",pos).apply();resumeButton.setVisibility(View.VISIBLE);
     }
     @Override public boolean dispatchKeyEvent(android.view.KeyEvent event){if(video!=null&&event.getAction()==android.view.KeyEvent.ACTION_DOWN&&event.getKeyCode()!=android.view.KeyEvent.KEYCODE_BACK)video.interact();return super.dispatchKeyEvent(event);}
     @Override public boolean dispatchTouchEvent(android.view.MotionEvent event){if(video!=null&&event.getAction()==android.view.MotionEvent.ACTION_DOWN)video.interact();return super.dispatchTouchEvent(event);}
-    @Override public void onBackPressed(){generation++;if(video!=null){if(video.dismissControls())return;saveProgress();video.release();video=null;getWindow().getDecorView().setSystemUiVisibility(0);getWindow().clearFlags(128);setContentView(root);}else if(episodes){search();}else super.onBackPressed();}
+    @Override public void onBackPressed(){generation++;if(video!=null){if(video.dismissControls())return;saveProgress();video.release();video=null;getWindow().getDecorView().setSystemUiVisibility(0);getWindow().clearFlags(128);setContentView(root);}else if(historyOpen){home();}else if(episodes){search();}else super.onBackPressed();}
     @Override protected void onPause(){if(video!=null){saveProgress();video.pause();}super.onPause();}
     @Override protected void onDestroy(){generation++;progressHandler.removeCallbacks(progressTick);saveProgress();if(video!=null)video.release();worker.shutdownNow();super.onDestroy();}
 }
