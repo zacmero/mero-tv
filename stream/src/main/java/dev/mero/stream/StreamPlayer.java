@@ -21,13 +21,14 @@ final class StreamPlayer {
     final LinearLayout bar;
     final ExoPlayer player;
     final Activity activity;
+    final SubtitleAppearance subtitleAppearance;
     final android.os.Handler handler=new android.os.Handler(android.os.Looper.getMainLooper());
     final Runnable hide=()->surfaceHide();
     void surfaceHide(){surface.hideController();}
     void interact(){surface.showController();handler.removeCallbacks(hide);handler.postDelayed(hide,4000);}
 
     StreamPlayer(Activity a,String url,String referer,JSONArray subtitles,Runnable failure) {
-        activity=a;
+        activity=a;subtitleAppearance=new SubtitleAppearance(a);
         DefaultHttpDataSource.Factory http=new DefaultHttpDataSource.Factory().setUserAgent("Mozilla/5.0")
             .setDefaultRequestProperties(Collections.singletonMap("Referer",referer));
         player=new ExoPlayer.Builder(a).setMediaSourceFactory(new DefaultMediaSourceFactory(http)).build();
@@ -39,6 +40,7 @@ final class StreamPlayer {
         }
         surface=new PlayerView(a);surface.setPlayer(player);surface.setKeepScreenOn(true);
         ((androidx.media3.ui.PlayerControlView)surface.findViewById(androidx.media3.ui.R.id.exo_controller)).setAnimationEnabled(false);
+        subtitleAppearance.apply(surface.getSubtitleView());
         surface.setControllerShowTimeoutMs(4000);surface.setControllerAutoShow(false);
 
         view.addView(surface,new FrameLayout.LayoutParams(-1,-1));
@@ -68,6 +70,7 @@ final class StreamPlayer {
                 labels.add(type==C.TRACK_TYPE_VIDEO?(f.height>0?f.height+"p":"Video"):(f.label!=null?f.label:(f.language!=null?f.language:"Track "+(i+1))));
                 actions.add(()->player.setTrackSelectionParameters(player.getTrackSelectionParameters().buildUpon().setTrackTypeDisabled(type,false).setOverrideForType(new TrackSelectionOverride(group.getMediaTrackGroup(),index)).build()));
             }
+        if(type==C.TRACK_TYPE_TEXT){labels.add("Appearance / font size");actions.add(()->subtitleAppearance.show(surface.getSubtitleView()));}
         LinearLayout choices=new LinearLayout(activity);choices.setOrientation(LinearLayout.VERTICAL);
         ScrollView scroll=new ScrollView(activity);scroll.addView(choices);
         AlertDialog dialog=new AlertDialog.Builder(activity).setTitle(type==C.TRACK_TYPE_TEXT?"Subtitles":type==C.TRACK_TYPE_AUDIO?"Audio":"Resolution")
