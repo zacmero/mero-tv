@@ -16,23 +16,37 @@ import java.util.*;
 /** Owns playback and track selection; no provider or catalogue responsibilities. */
 @androidx.media3.common.util.UnstableApi
 final class StreamPlayer {
-    final LinearLayout view;
+    final FrameLayout view;
+    final PlayerView surface;
+    final LinearLayout bar;
     final ExoPlayer player;
     final Activity activity;
+    final android.os.Handler handler=new android.os.Handler(android.os.Looper.getMainLooper());
+    final Runnable hide=()->surfaceHide();
+    void surfaceHide(){surface.hideController();}
+    void interact(){surface.showController();handler.removeCallbacks(hide);handler.postDelayed(hide,4000);}
+
     StreamPlayer(Activity a,String url,String referer,JSONArray subtitles,Runnable failure) {
         activity=a;
         DefaultHttpDataSource.Factory http=new DefaultHttpDataSource.Factory().setUserAgent("Mozilla/5.0")
             .setDefaultRequestProperties(Collections.singletonMap("Referer",referer));
         player=new ExoPlayer.Builder(a).setMediaSourceFactory(new DefaultMediaSourceFactory(http)).build();
-        view=new LinearLayout(a);view.setOrientation(LinearLayout.VERTICAL);view.setBackgroundColor(0xff080e15);
-        LinearLayout bar=new LinearLayout(a);
+        view=new FrameLayout(a);view.setBackgroundColor(0xff080e15);
+        bar=new LinearLayout(a);bar.setBackgroundColor(0xdd080e15);
         for(int type:new int[]{C.TRACK_TYPE_TEXT,C.TRACK_TYPE_AUDIO,C.TRACK_TYPE_VIDEO}) {
-            Button b=new Button(a);b.setText(type==C.TRACK_TYPE_TEXT?"Subtitles":type==C.TRACK_TYPE_AUDIO?"Audio":"Resolution");
-            b.setOnClickListener(v->tracks(type));bar.addView(b,new LinearLayout.LayoutParams(0,-2,1));
+            Button b=new Button(a);FocusStyle.apply(b);b.setTextSize(13);b.setMinWidth(0);b.setMinHeight(0);b.setPadding(12,4,12,4);b.setText(type==C.TRACK_TYPE_TEXT?"Subtitles":type==C.TRACK_TYPE_AUDIO?"Audio":"Resolution");
+            b.setOnClickListener(v->tracks(type));bar.addView(b,new LinearLayout.LayoutParams(-2,Math.round(40*a.getResources().getDisplayMetrics().density)));
         }
-        view.addView(bar);
-        PlayerView surface=new PlayerView(a);surface.setPlayer(player);surface.setKeepScreenOn(true);
-        surface.setShowSubtitleButton(true);view.addView(surface,new LinearLayout.LayoutParams(-1,0,1));
+        surface=new PlayerView(a);surface.setPlayer(player);surface.setKeepScreenOn(true);
+        ((androidx.media3.ui.PlayerControlView)surface.findViewById(androidx.media3.ui.R.id.exo_controller)).setAnimationEnabled(false);
+        surface.setControllerShowTimeoutMs(4000);surface.setControllerAutoShow(false);
+
+        view.addView(surface,new FrameLayout.LayoutParams(-1,-1));
+        LinearLayout bottom=surface.findViewById(androidx.media3.ui.R.id.exo_basic_controls);
+        bottom.addView(bar,0);
+        surface.findViewById(androidx.media3.ui.R.id.exo_settings).setVisibility(android.view.View.GONE);
+        view.setFocusable(true);
+        view.setOnKeyListener((v,key,event)->{if(key==KeyEvent.KEYCODE_DPAD_UP||key==KeyEvent.KEYCODE_DPAD_DOWN||key==KeyEvent.KEYCODE_DPAD_CENTER){interact();return false;}return false;});
         List<MediaItem.SubtitleConfiguration> subs=new ArrayList<>();
         if(subtitles!=null)for(int i=0;i<subtitles.length();i++){
             JSONObject s=subtitles.optJSONObject(i);if(s==null)continue;
@@ -43,7 +57,7 @@ final class StreamPlayer {
         }
         player.addListener(new Player.Listener(){@Override public void onPlayerError(PlaybackException error){failure.run();}});
         player.setMediaItem(new MediaItem.Builder().setUri(url).setSubtitleConfigurations(subs).build());
-        player.prepare();player.play();
+        player.prepare();player.play();interact();
     }
     void tracks(int type){
         List<String> labels=new ArrayList<>();List<Runnable> actions=new ArrayList<>();
@@ -54,9 +68,14 @@ final class StreamPlayer {
                 labels.add(type==C.TRACK_TYPE_VIDEO?(f.height>0?f.height+"p":"Video"):(f.label!=null?f.label:(f.language!=null?f.language:"Track "+(i+1))));
                 actions.add(()->player.setTrackSelectionParameters(player.getTrackSelectionParameters().buildUpon().setTrackTypeDisabled(type,false).setOverrideForType(new TrackSelectionOverride(group.getMediaTrackGroup(),index)).build()));
             }
-        new AlertDialog.Builder(activity).setTitle(type==C.TRACK_TYPE_TEXT?"Subtitles":type==C.TRACK_TYPE_AUDIO?"Audio":"Resolution")
-            .setItems(labels.toArray(new String[0]),(d,n)->actions.get(n).run()).setNegativeButton("Back",null).show();
+        LinearLayout choices=new LinearLayout(activity);choices.setOrientation(LinearLayout.VERTICAL);
+        ScrollView scroll=new ScrollView(activity);scroll.addView(choices);
+        AlertDialog dialog=new AlertDialog.Builder(activity).setTitle(type==C.TRACK_TYPE_TEXT?"Subtitles":type==C.TRACK_TYPE_AUDIO?"Audio":"Resolution")
+            .setView(scroll).setNegativeButton("Back",null).create();
+        for(int i=0;i<labels.size();i++){final int index=i;Button b=new Button(activity);FocusStyle.apply(b);b.setText(labels.get(i));b.setOnClickListener(v->{actions.get(index).run();dialog.dismiss();interact();});choices.addView(b);}
+        dialog.show();if(choices.getChildCount()>0)choices.getChildAt(0).requestFocus();
     }
+    boolean dismissControls(){if(surface.isControllerFullyVisible()){surface.hideController();surface.requestFocus();return true;}return false;}
     void pause(){player.pause();}
-    void release(){player.release();}
+    void release(){handler.removeCallbacks(hide);player.release();}
 }
