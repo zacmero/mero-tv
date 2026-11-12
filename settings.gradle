@@ -3,3 +3,4 @@ dependencyResolutionManagement { repositories { google(); mavenCentral(); maven 
 rootProject.name = 'MeroTV'
 include ':app'
 
+include ":stream"

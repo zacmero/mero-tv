@@ -1,0 +1,95 @@
+package dev.mero.stream;
+
+import android.app.Activity;
+import static dev.mero.stream.Provider.*;
+import android.os.Bundle;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.view.View;
+import android.widget.*;
+import android.net.Uri;
+import android.text.Html;
+import org.json.JSONObject;
+import java.net.*;
+import java.io.*;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.*;
+
+/** Provider extraction adapted from pystardust/ani-cli, GPL-3.0. */
+@androidx.media3.common.util.UnstableApi
+public class MainActivity extends Activity {
+    final ExecutorService worker = Executors.newSingleThreadExecutor();
+    final String base = "https://hianime.at";
+    LinearLayout root, rows; EditText query; TextView status; StreamPlayer video;
+    int generation; String mode="sub"; String slug; boolean episodes;
+    interface Job { void run() throws Exception; }
+    @Override public void onCreate(Bundle b) { super.onCreate(b); home(); }
+    TextView text(String s, int size) { TextView t = new TextView(this); t.setText(s); t.setTextSize(size); t.setTextColor(0xff71f7bc); t.setTypeface(Typeface.MONOSPACE); t.setPadding(12,10,12,10); return t; }
+    void home() {
+        video=null; episodes=false;
+        root=new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setPadding(36,20,36,20); root.setBackgroundColor(0xff080e15);
+        root.addView(text("mero-stream // anime terminal",26));
+        query=new EditText(this); query.setSingleLine(true); query.setTextColor(Color.WHITE); query.setHintTextColor(0xff95a5b0); query.setHint("Search anime_ "); query.setTypeface(Typeface.MONOSPACE); root.addView(query);
+        Button search=new Button(this); search.setText("> SEARCH"); search.setOnClickListener(v->search());root.addView(search);
+        query.setOnEditorActionListener((v,a,e)->{search();return true;});
+        Button language=new Button(this);language.setText("SOURCE AUDIO: SUB");language.setOnClickListener(v->{mode=mode.equals("sub")?"dub":"sub";language.setText("SOURCE AUDIO: "+mode.toUpperCase(java.util.Locale.ROOT));});root.addView(language);
+        status=text("READY // enter a title",16);root.addView(status);
+        ScrollView scroll=new ScrollView(this); rows=new LinearLayout(this); rows.setOrientation(LinearLayout.VERTICAL);scroll.addView(rows);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));setContentView(root);
+    }
+    int dp(int n) { return Math.round(n * getResources().getDisplayMetrics().density); }
+    void row(String label, Runnable action) {
+        Button b=new Button(this); b.setText(label); b.setAllCaps(false);
+        b.setTypeface(Typeface.MONOSPACE); b.setTextSize(18); b.setTextColor(0xffd4eeff);
+        b.setGravity(android.view.Gravity.CENTER_VERTICAL | android.view.Gravity.LEFT);
+        b.setPadding(dp(18),dp(14),dp(18),dp(14)); b.setMinHeight(dp(64));
+        android.graphics.drawable.StateListDrawable states=new android.graphics.drawable.StateListDrawable();
+        for (int state : new int[]{android.R.attr.state_focused,android.R.attr.state_pressed,0}) {
+            android.graphics.drawable.GradientDrawable bg=new android.graphics.drawable.GradientDrawable();
+            bg.setColor(state==0?0xff101b27:0xff193d5c); bg.setCornerRadius(dp(5));
+            bg.setStroke(dp(state==0?1:2),state==0?0xff253647:0xff6abfff);
+            states.addState(state==0?new int[]{}:new int[]{state},bg);
+        }
+        b.setBackground(states); b.setOnClickListener(v->action.run());
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.bottomMargin=dp(8);rows.addView(b,lp);
+    }
+    void task(String message,Job job) {
+        int g=++generation;status.setText(message);
+        worker.submit(()->{try{job.run();}catch(Exception e){runOnUiThread(()->{if(g==generation){status.setText("ERROR // "+e.getClass().getSimpleName()+" — retry or search again");}});}});
+    }
+    void search() {
+        String q=query.getText().toString().trim();if(q.isEmpty())return;episodes=false;rows.removeAllViews();
+        task("SEARCHING...",()->{
+            String html=get(base+"/search?keyword="+URLEncoder.encode(q,"UTF-8")).split("id=\"main-sidebar\"")[0];
+            Matcher m=Pattern.compile("<h3 class=\"film-name\">\\s*<a href=\"[^\"]*/([^\"/]+)\"\\s*title=\"([^\"]*)\"",Pattern.DOTALL).matcher(html);
+            List<String[]> found=new ArrayList<>();while(m.find()&&found.size()<50)found.add(new String[]{m.group(1),clean(m.group(2))});
+            runOnUiThread(()->{rows.removeAllViews();for(String[] x:found)row(x[1],()->episodes(x[0]));status.setText(found.isEmpty()?"NO RESULTS // provider may be unavailable":found.size()+" RESULTS");if(rows.getChildCount()>0)rows.getChildAt(0).requestFocus();});
+        });
+    }
+    void episodes(String id) {
+        slug=id;episodes=true;rows.removeAllViews();
+        task("LOADING EPISODES...",()->{
+            JSONObject json=new JSONObject(get(base+"/api/theme/episode/list/"+id.substring(id.lastIndexOf('-')+1)));
+            String html=json.optString("html");Matcher m=Pattern.compile("data-number=\"([^\"]*)\"[^>]*data-id=\"([0-9]+)\"").matcher(html);
+            List<String[]> found=new ArrayList<>();while(m.find())found.add(new String[]{m.group(1),m.group(2)});
+            runOnUiThread(()->{rows.removeAllViews();for(String[] x:found)row("EP "+x[0]+" > PLAY",()->resolve(x[1]));status.setText(found.size()+" EPISODES // "+mode.toUpperCase(java.util.Locale.ROOT));if(rows.getChildCount()>0)rows.getChildAt(0).requestFocus();});
+        });
+    }
+    void resolve(String id) {
+        task("RESOLVING STREAM...",()->{
+            Provider.Stream stream=Provider.resolve(id,mode);
+            runOnUiThread(()->play(stream.url,stream.referer,stream.subtitles));
+
+        });
+    }
+    void play(String url,String referer) { play(url,referer,new org.json.JSONArray()); }
+    void play(String url,String referer,org.json.JSONArray subtitles) {
+        video=new StreamPlayer(this,url,referer,subtitles,()->{
+            if(video!=null){video.release();video=null;}setContentView(root);
+            status.setText("PLAYBACK ERROR // retry or choose another episode");
+        });setContentView(video.view);video.view.requestFocus();
+    }
+    @Override public void onBackPressed(){generation++;if(video!=null){video.release();video=null;getWindow().clearFlags(128);setContentView(root);}else if(episodes){search();}else super.onBackPressed();}
+    @Override protected void onPause(){if(video!=null)video.pause();super.onPause();}
+    @Override protected void onDestroy(){generation++;if(video!=null)video.release();worker.shutdownNow();super.onDestroy();}
+}
