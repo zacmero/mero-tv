@@ -26,13 +26,17 @@ final class StreamPlayer {
     final android.os.Handler handler=new android.os.Handler(android.os.Looper.getMainLooper());
     final Runnable hide=()->surfaceHide();
     void surfaceHide(){surface.hideController();}
+    void finishSeek(){handler.removeCallbacks(hide);surface.hideController();surface.requestFocus();}
+    boolean seekKey(KeyEvent event){int key=event.getKeyCode();if(key!=KeyEvent.KEYCODE_MEDIA_REWIND&&key!=KeyEvent.KEYCODE_MEDIA_FAST_FORWARD)return false;
+        if(event.getAction()==KeyEvent.ACTION_DOWN){if(key==KeyEvent.KEYCODE_MEDIA_REWIND)player.seekBack();else player.seekForward();finishSeek();}return true;}
+
     void interact(){surface.showController();handler.removeCallbacks(hide);handler.postDelayed(hide,4000);}
 
     StreamPlayer(Activity a,String url,String referer,JSONArray subtitles,Runnable failure) {
         activity=a;subtitleAppearance=new SubtitleAppearance(a);
         DefaultHttpDataSource.Factory http=new DefaultHttpDataSource.Factory().setUserAgent("Mozilla/5.0")
             .setDefaultRequestProperties(Collections.singletonMap("Referer",referer));
-        player=new ExoPlayer.Builder(a).setMediaSourceFactory(new DefaultMediaSourceFactory(http)).build();
+        player=new ExoPlayer.Builder(a).setSeekBackIncrementMs(2000).setSeekForwardIncrementMs(2000).setMediaSourceFactory(new DefaultMediaSourceFactory(http)).build();
         view=new FrameLayout(a);view.setBackgroundColor(0xff080e15);
         bar=new LinearLayout(a);bar.setBackgroundColor(0xdd080e15);
         for(int type:new int[]{C.TRACK_TYPE_TEXT,C.TRACK_TYPE_AUDIO,C.TRACK_TYPE_VIDEO}) {
@@ -41,6 +45,13 @@ final class StreamPlayer {
         }
         surface=new PlayerView(a);surface.setPlayer(player);surface.setKeepScreenOn(true);
         ((androidx.media3.ui.PlayerControlView)surface.findViewById(androidx.media3.ui.R.id.exo_controller)).setAnimationEnabled(false);
+        androidx.media3.ui.TimeBar timeline=surface.findViewById(androidx.media3.ui.R.id.exo_progress);
+        ((android.view.View)timeline).setOnClickListener(v->{player.play();handler.post(()->finishSeek());});
+        timeline.addListener(new androidx.media3.ui.TimeBar.OnScrubListener(){
+            public void onScrubStart(androidx.media3.ui.TimeBar bar,long position){handler.removeCallbacks(hide);}
+            public void onScrubMove(androidx.media3.ui.TimeBar bar,long position){handler.removeCallbacks(hide);}
+            public void onScrubStop(androidx.media3.ui.TimeBar bar,long position,boolean canceled){if(!canceled){player.seekTo(position);player.play();handler.post(()->finishSeek());}}
+        });
         subtitleAppearance.bind(surface.getSubtitleView());
         surface.setControllerShowTimeoutMs(4000);surface.setControllerAutoShow(false);
 
