@@ -11,6 +11,11 @@ public class StreamChecks extends Instrumentation {
  @Override public void onCreate(Bundle args){super.onCreate(args);start();}
  @Override public void onStart(){Bundle result=new Bundle();try{
   app=(MainActivity)startActivitySync(new Intent(getTargetContext(),MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+  runOnMainSync(()->{
+   try{android.content.pm.ActivityInfo info=app.getPackageManager().getActivityInfo(new android.content.ComponentName(app,"dev.mero.stream.MainActivity"),0);
+    if(!(info.loadIcon(app.getPackageManager()) instanceof android.graphics.drawable.VectorDrawable)||!(info.loadBanner(app.getPackageManager()) instanceof android.graphics.drawable.VectorDrawable))throw new AssertionError("Launcher vector assets missing");
+   }catch(android.content.pm.PackageManager.NameNotFoundException e){throw new RuntimeException(e);}
+  });
   runOnMainSync(()->{app.query.setText("sousou no frieren");app.search();});
   waitFor(()->app.rows.getChildCount()>0,20000,"Search results");
   runOnMainSync(()->app.rows.getChildAt(0).performClick());
@@ -33,12 +38,19 @@ public class StreamChecks extends Instrumentation {
    if(history.length()==0||!app.episodeId.equals(history.optJSONObject(0).optString("episode")))throw new AssertionError("Last watched missing current episode");
    app.showHistory();if(app.rows.getChildCount()==0)throw new AssertionError("History rows missing");app.rows.getChildAt(0).performClick();
   });
-  waitFor(()->app.video!=null&&app.video.player.getCurrentPosition()>10000,30000,"Continue watching");
+  waitFor(()->app.video!=null&&app.video.player.isPlaying()&&app.video.player.getCurrentPosition()>10000,30000,"Continue watching");
   runOnMainSync(()->{
    PlayerVolume volume=app.video.volume;float gain=volume.prefs.getFloat("gain",1);boolean muted=volume.prefs.getBoolean("muted",false);
    volume.prefs.edit().putFloat("gain",1).putBoolean("muted",false).apply();volume.apply();
    android.app.AlertDialog volumeDialog=volume.show();android.widget.Button quieter=findButton(volumeDialog.getWindow().getDecorView(),"Quieter");
    if(quieter==null)throw new AssertionError("Volume control missing");quieter.performClick();
+   float previous=app.video.player.getVolume();app.dispatchKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN,android.view.KeyEvent.KEYCODE_VOLUME_DOWN));
+   if(app.video.player.getVolume()>=previous||volume.hud.getVisibility()!=android.view.View.VISIBLE)throw new AssertionError("Volume key or HUD failed");
+   float beforeShortcut=app.video.player.getVolume();
+   app.dispatchKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN,android.view.KeyEvent.KEYCODE_MENU));
+   app.dispatchKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN,android.view.KeyEvent.KEYCODE_DPAD_DOWN));
+   if(app.video.player.getVolume()>=beforeShortcut)throw new AssertionError("Menu/D-pad shortcut failed");
+   volume.dismissShortcut();
    if(app.video.player.getVolume()>=1)throw new AssertionError("Player volume did not decrease");volume.mute();if(app.video.player.getVolume()!=0)throw new AssertionError("Mute failed");volume.mute();if(app.video.player.getVolume()<=0)throw new AssertionError("Unmute failed");
    volumeDialog.dismiss();volume.prefs.edit().putFloat("gain",gain).putBoolean("muted",muted).apply();volume.apply();
    SubtitleAppearance style=app.video.subtitleAppearance;
@@ -54,9 +66,10 @@ public class StreamChecks extends Instrumentation {
    if(new SubtitleAppearance(app).choice("position",5)!=(oldPlacement+1)%5)throw new AssertionError("Placement not persisted");
    dialog.dismiss();android.content.SharedPreferences.Editor restore=style.prefs.edit().clear();for(java.util.Map.Entry<String,?> entry:before.entrySet())restore.putInt(entry.getKey(),(Integer)entry.getValue());restore.apply();style.apply(app.video.surface.getSubtitleView());
   });
+  waitFor(()->app.video.volume.hud.getVisibility()==android.view.View.GONE,2500,"Volume HUD auto-hide");
   result.putString("controls","PASS: Back hides then exits; Continue restores position");
-  result.putString("stream","PASS: widescreen playback, controls, history resume and subtitle placement and player volume");finish(Activity.RESULT_OK,result);
- }catch(Throwable e){result.putString("stream","FAIL: "+e.getMessage());finish(Activity.RESULT_CANCELED,result);}}
+  result.putString("stream","PASS: widescreen playback, controls, history resume and subtitle placement, volume keys/HUD and Mero TV-compatible launcher assets");finish(Activity.RESULT_OK,result);
+ }catch(Throwable e){android.util.Log.e("StreamChecks","Acceptance failure",e);result.putString("stream","FAIL: "+e.getMessage());finish(Activity.RESULT_CANCELED,result);}}
  android.widget.Button findButton(android.view.View view,String prefix){if(view instanceof android.widget.Button&&((android.widget.Button)view).getText().toString().startsWith(prefix))return (android.widget.Button)view;if(view instanceof android.view.ViewGroup){android.view.ViewGroup group=(android.view.ViewGroup)view;for(int i=0;i<group.getChildCount();i++){android.widget.Button found=findButton(group.getChildAt(i),prefix);if(found!=null)return found;}}return null;}
  interface Check {boolean ok();}
  void waitFor(Check c,long timeout,String step)throws Exception{long end=SystemClock.elapsedRealtime()+timeout;while(SystemClock.elapsedRealtime()<end){boolean[] yes={false};runOnMainSync(()->yes[0]=c.ok());if(yes[0])return;Thread.sleep(300);}throw new Exception(step+" timed out");}
