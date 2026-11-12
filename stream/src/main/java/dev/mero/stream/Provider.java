@@ -15,6 +15,15 @@ final class Provider {
         try {if(c.getResponseCode()!=200)throw new IOException("Provider unavailable");try(InputStream in=c.getInputStream();ByteArrayOutputStream out=new ByteArrayOutputStream()){byte[] b=new byte[8192];int n;while((n=in.read(b))!=-1){if(out.size()+n>4000000)throw new IOException("Response too large");out.write(b,0,n);}return out.toString("UTF-8");}}finally{c.disconnect();}
     }
     static String clean(String s){return Html.fromHtml(s,Html.FROM_HTML_MODE_LEGACY).toString();}
+ static final class SearchResult {final String id,title,poster;SearchResult(String id,String title,String poster){this.id=id;this.title=title;this.poster=poster;}}
+ static java.util.List<SearchResult> searchResults(String html){
+  java.util.List<SearchResult> results=new java.util.ArrayList<>();
+  html=html.split("id=\"main-sidebar\"")[0];
+  Pattern title=Pattern.compile("<h3 class=\"film-name\">\\s*<a href=\"[^\"]*/([^\"/]+)\"\\s*title=\"([^\"]*)\"",Pattern.DOTALL);
+  Pattern image=Pattern.compile("<img[^>]*?\\bsrc=\"([^\"]+)\"",Pattern.DOTALL);
+  for(String card:html.split("(?=<div class=\"flw-item)")){Matcher name=title.matcher(card);if(!name.find())continue;Matcher poster=image.matcher(card);String url=poster.find()?clean(poster.group(1)):"";results.add(new SearchResult(name.group(1),clean(name.group(2)),url));if(results.size()>=50)break;}
+  return results;
+ }
  static Stream resolve(String id,String mode)throws Exception {
             String raw=get(BASE+"/api/theme/episode/servers?episodeId="+id);String html=new JSONObject(raw).optString("html");
             Matcher m=Pattern.compile("data-type=\""+mode+"\"[^>]*data-server-name=\"ZokoAnime\"[^>]*data-hash=\"([^\"]+)\"").matcher(html);if(!m.find())throw new IOException("No supported server");

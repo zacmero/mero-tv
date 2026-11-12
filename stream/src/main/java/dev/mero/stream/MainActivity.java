@@ -21,6 +21,7 @@ import java.util.regex.*;
 public class MainActivity extends Activity {
     final ExecutorService worker = Executors.newSingleThreadExecutor();
     final String base = "https://hianime.at";
+    PosterPreview posters;ImageView poster;
     LinearLayout root, rows; EditText query; TextView status; StreamPlayer video;
     int generation; String mode="sub"; String slug; boolean episodes; String episodeId="",episodeLabel=""; boolean historyOpen; long resumePosition; Button resumeButton;
     final android.os.Handler progressHandler=new android.os.Handler(android.os.Looper.getMainLooper());
@@ -29,6 +30,7 @@ public class MainActivity extends Activity {
     @Override public void onCreate(Bundle b) { super.onCreate(b);setVolumeControlStream(android.media.AudioManager.STREAM_MUSIC); home(); progressHandler.postDelayed(progressTick,5000); }
     TextView text(String s, int size) { TextView t = new TextView(this); t.setText(s); t.setTextSize(size); t.setTextColor(0xff71f7bc); t.setTypeface(Typeface.MONOSPACE); t.setPadding(12,10,12,10); return t; }
     void home() {
+        if(posters!=null)posters.close();
         video=null; episodes=false;historyOpen=false;
         root=new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setPadding(36,20,36,20); root.setBackgroundColor(0xff080e15);
         LinearLayout brand=new LinearLayout(this);brand.setGravity(android.view.Gravity.CENTER_VERTICAL);
@@ -42,28 +44,29 @@ public class MainActivity extends Activity {
         resumeButton.setOnClickListener(v->{android.content.SharedPreferences p=getPreferences(0);mode=p.getString("mode","sub");slug=p.getString("slug","");query.setText(p.getString("query",""));episodeLabel=p.getString("label","");resumePosition=p.getLong("position",0);resolve(p.getString("episode",""));});root.addView(resumeButton);
         Button watched=new Button(this);FocusStyle.apply(watched);watched.setText("Last watched");watched.setOnClickListener(v->showHistory());root.addView(watched);
         status=text("READY // enter a title",16);root.addView(status);
-        ScrollView scroll=new ScrollView(this); rows=new LinearLayout(this); rows.setOrientation(LinearLayout.VERTICAL);scroll.addView(rows);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));setContentView(root);
+        ScrollView scroll=new ScrollView(this); rows=new LinearLayout(this); rows.setOrientation(LinearLayout.VERTICAL);scroll.addView(rows);LinearLayout content=new LinearLayout(this);content.addView(scroll,new LinearLayout.LayoutParams(0,-1,1));
+        poster=new ImageView(this);poster.setScaleType(ImageView.ScaleType.FIT_CENTER);poster.setVisibility(View.GONE);content.addView(poster,new LinearLayout.LayoutParams(dp(100),-1));posters=new PosterPreview(this,poster);
+        root.addView(content,new LinearLayout.LayoutParams(-1,0,1));setContentView(root);
     }
     int dp(int n) { return Math.round(n * getResources().getDisplayMetrics().density); }
-    void row(String label, Runnable action) {
+    Button row(String label, Runnable action) {
         Button b=new Button(this); b.setText(label); b.setAllCaps(false);
         b.setTypeface(Typeface.MONOSPACE); b.setTextSize(18); b.setTextColor(0xffd4eeff);
         b.setGravity(android.view.Gravity.CENTER_VERTICAL | android.view.Gravity.LEFT);
         b.setPadding(dp(18),dp(14),dp(18),dp(14)); b.setMinHeight(dp(64));
         FocusStyle.apply(b); b.setOnClickListener(v->action.run());
-        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.bottomMargin=dp(8);rows.addView(b,lp);
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.bottomMargin=dp(8);rows.addView(b,lp);return b;
     }
     void task(String message,Job job) {
         int g=++generation;status.setText(message);
         worker.submit(()->{try{job.run();}catch(Exception e){runOnUiThread(()->{if(g==generation){status.setText("ERROR // "+e.getClass().getSimpleName()+" — retry or search again");}});}});
     }
     void search() {
-        String q=query.getText().toString().trim();if(q.isEmpty())return;episodes=false;rows.removeAllViews();
+        String q=query.getText().toString().trim();if(q.isEmpty())return;episodes=false;posters.show(null);poster.setVisibility(View.GONE);rows.removeAllViews();
         task("SEARCHING...",()->{
             String html=get(base+"/search?keyword="+URLEncoder.encode(q,"UTF-8")).split("id=\"main-sidebar\"")[0];
-            Matcher m=Pattern.compile("<h3 class=\"film-name\">\\s*<a href=\"[^\"]*/([^\"/]+)\"\\s*title=\"([^\"]*)\"",Pattern.DOTALL).matcher(html);
-            List<String[]> found=new ArrayList<>();while(m.find()&&found.size()<50)found.add(new String[]{m.group(1),clean(m.group(2))});
-            runOnUiThread(()->{rows.removeAllViews();for(String[] x:found)row(x[1],()->episodes(x[0]));status.setText(found.isEmpty()?"NO RESULTS // provider may be unavailable":found.size()+" RESULTS");if(rows.getChildCount()>0)rows.getChildAt(0).requestFocus();});
+            List<Provider.SearchResult> found=Provider.searchResults(html);
+            runOnUiThread(()->{rows.removeAllViews();for(Provider.SearchResult x:found){Button entry=row(x.title,()->episodes(x.id));entry.setOnFocusChangeListener((v,focused)->{if(focused){poster.setVisibility(x.poster.startsWith("https://")?View.VISIBLE:View.GONE);poster.setContentDescription(x.title+" poster");posters.show(x.poster);}});}status.setText(found.isEmpty()?"NO RESULTS // provider may be unavailable":found.size()+" RESULTS");if(rows.getChildCount()>0)rows.getChildAt(0).requestFocus();});
         });
     }
     void episodes(String id) {
@@ -92,7 +95,7 @@ public class MainActivity extends Activity {
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN|View.SYSTEM_UI_FLAG_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
     }
     void showHistory(){
-        historyOpen=true;episodes=false;rows.removeAllViews();org.json.JSONArray entries=new WatchHistory(this).entries();
+        historyOpen=true;episodes=false;posters.show(null);poster.setVisibility(View.GONE);rows.removeAllViews();org.json.JSONArray entries=new WatchHistory(this).entries();
         for(int i=0;i<entries.length();i++){JSONObject item=entries.optJSONObject(i);if(item==null)continue;
             String title=item.optString("slug").replaceFirst("-[0-9]+$", "").replace('-', ' ');
             row(title+" // EP "+item.optString("label","?")+" // "+(item.optBoolean("completed")?"Completed":item.optLong("position")/60000+" min")+" // "+item.optString("mode"),()->{
@@ -117,5 +120,5 @@ public class MainActivity extends Activity {
     @Override public boolean dispatchTouchEvent(android.view.MotionEvent event){if(video!=null&&event.getAction()==android.view.MotionEvent.ACTION_DOWN)video.interact();return super.dispatchTouchEvent(event);}
     @Override public void onBackPressed(){generation++;if(video!=null){if(video.volume.dismissShortcut()||video.dismissControls())return;saveProgress();video.release();video=null;getWindow().getDecorView().setSystemUiVisibility(0);getWindow().clearFlags(128);setContentView(root);}else if(historyOpen){home();}else if(episodes){search();}else super.onBackPressed();}
     @Override protected void onPause(){if(video!=null){saveProgress();video.pause();}super.onPause();}
-    @Override protected void onDestroy(){generation++;progressHandler.removeCallbacks(progressTick);saveProgress();if(video!=null)video.release();worker.shutdownNow();super.onDestroy();}
+    @Override protected void onDestroy(){generation++;progressHandler.removeCallbacks(progressTick);if(posters!=null)posters.close();saveProgress();if(video!=null)video.release();worker.shutdownNow();super.onDestroy();}
 }
