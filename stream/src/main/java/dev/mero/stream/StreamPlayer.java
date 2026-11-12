@@ -26,11 +26,19 @@ final class StreamPlayer {
     final android.os.Handler handler=new android.os.Handler(android.os.Looper.getMainLooper());
     final Runnable hide=()->surfaceHide();
     void surfaceHide(){surface.hideController();}
-    void finishSeek(){handler.removeCallbacks(hide);surface.hideController();surface.requestFocus();}
+    boolean confirmingTimeline;
+    boolean timelineKey(KeyEvent event){int key=event.getKeyCode();if(key!=KeyEvent.KEYCODE_DPAD_CENTER&&key!=KeyEvent.KEYCODE_ENTER)return false;
+        android.view.View timeline=surface.findViewById(androidx.media3.ui.R.id.exo_progress);
+        if(!confirmingTimeline&&!timeline.hasFocus())return false;
+        if(event.getAction()==KeyEvent.ACTION_DOWN&&event.getRepeatCount()==0){confirmingTimeline=true;timeline.dispatchKeyEvent(event);player.play();finishSeek();}
+        else if(event.getAction()==KeyEvent.ACTION_UP){confirmingTimeline=false;timeline.setPressed(false);finishSeek();}
+        return true;
+    }
+    void finishSeek(){handler.removeCallbacks(hide);surface.hideController();surface.findViewById(androidx.media3.ui.R.id.exo_controller).setVisibility(android.view.View.GONE);volume.hideLevel();surface.requestFocus();}
     boolean seekKey(KeyEvent event){int key=event.getKeyCode();if(key!=KeyEvent.KEYCODE_MEDIA_REWIND&&key!=KeyEvent.KEYCODE_MEDIA_FAST_FORWARD)return false;
         if(event.getAction()==KeyEvent.ACTION_DOWN){if(key==KeyEvent.KEYCODE_MEDIA_REWIND)player.seekBack();else player.seekForward();finishSeek();}return true;}
 
-    void interact(){surface.showController();handler.removeCallbacks(hide);handler.postDelayed(hide,4000);}
+    void interact(){surface.findViewById(androidx.media3.ui.R.id.exo_controller).setVisibility(android.view.View.VISIBLE);surface.showController();handler.removeCallbacks(hide);handler.postDelayed(hide,4000);}
 
     StreamPlayer(Activity a,String url,String referer,JSONArray subtitles,Runnable failure) {
         activity=a;subtitleAppearance=new SubtitleAppearance(a);
