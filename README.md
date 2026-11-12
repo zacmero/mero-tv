@@ -1,10 +1,10 @@
 # Mero TV
 
-Fire TV hardware archaeology, a documented root/unlock research track, and a lightweight browser with a personal website library for Zac's TV.
+Fire TV hardware archaeology, a documented root/unlock research track, and a native TV browser with an editable website library for Zac's TV.
 
-**Status — 2026-11-10:** a first native Mero TV browser APK is implemented and installed on the confirmed **AFTSSS / sheldonp**, Android API 28. The site library starts empty. Build/lint and on-device library checks pass; the owner confirmed remote point-and-click. Local video playback is under validation; personal-site compatibility and reboot durability remain unverified. The current observed build is **PS7717.5746N**. No exploit or firmware write has been performed.
+**Status — 2026-11-11:** a first native Mero TV browser APK is implemented and installed on the confirmed **AFTSSS / sheldonp**, Android API 28. The site library starts empty. Build/lint and on-device library checks pass; the owner confirmed remote point-and-click. The extension-capable build adds signed uBlock Origin Lite, on/off controls, filter-list settings, and direct remote scrolling. On/off filtering, cold-start protection, settings, data preservation, and protected remote navigation pass on the unit. The decoder handoff failure is corrected and actual 1080p YouTube playback is observed; perfectly smooth sustained 1080p60 and faster cold startup remain open. Broader site compatibility and reboot durability remain unverified. The current observed build is **PS7717.5746N**. No exploit or firmware write has been performed.
 
-Moonlight 12.2 and Sunshine with CUDA 12.9.1 also provide a working 1080p60 desktop stream. See the [session evidence](docs/local-session-2026-11-10.md) and [browser build/run guide](docs/browser-build.md).
+Moonlight 12.2 and Sunshine with CUDA 12.9.1 also provide a working 1080p60 desktop stream. See the [streaming evidence](docs/local-session-2026-11-10.md), [current browser evidence](docs/browser-reliability-2026-11-11.md), and [browser build/run guide](docs/browser-build.md).
 
 ## Start here
 

@@ -1,3 +1,5 @@
+**Current browser update, 2026-11-11 UTC:** The app is updated with the decoder compatibility correction and signed uBlock Origin Lite2026.1110.1816. See [the reliability record](docs/browser-reliability-2026-11-11.md) for actual filtering/playback evidence and remaining cold-start/performance limits. Earlier pause handoffs are historical.
+
 # Handoff to Zac's local agent
 
 **Local update, 2026-11-10 UTC:** Direct ADB inspection now reports Fire OS 7.7.1.7 / `PS7717.5746N`, incremental `0036408029828`. Moonlight 12.2 is paired with Sunshine 2025.924.154138 (bundled CUDA 12.9.1); a hardware-encoded H.264 Desktop stream connected. The first native Mero TV browser is also installed; see [build/run guide](docs/browser-build.md). Long-duration quality, reboot durability, and broader site checks remain. See [the local session record](docs/local-session-2026-11-10.md). The historical baseline and exploit-profile match below no longer describe the current firmware.
