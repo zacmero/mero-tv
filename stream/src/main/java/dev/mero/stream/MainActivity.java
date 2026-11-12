@@ -32,41 +32,45 @@ public class MainActivity extends Activity {
     void home() {
         if(posters!=null)posters.close();
         video=null; episodes=false;historyOpen=false;
-        root=new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setPadding(36,20,36,20); root.setBackgroundColor(0xff080e15);
+        root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setPadding(dp(18),dp(10),dp(18),dp(10));root.setBackgroundColor(0xff080e15);
         LinearLayout brand=new LinearLayout(this);brand.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        ImageView logo=new ImageView(this);logo.setImageResource(dev.mero.stream.R.drawable.icon);logo.setContentDescription("mero-stream logo");brand.addView(logo,new LinearLayout.LayoutParams(dp(52),dp(52)));brand.addView(text("mero-stream // anime terminal",26));root.addView(brand);
-        query=new EditText(this); query.setSingleLine(true); query.setTextColor(Color.WHITE); query.setHintTextColor(0xff95a5b0); query.setHint("Search anime_ "); query.setTypeface(Typeface.MONOSPACE); root.addView(query);
-        Button search=new Button(this);FocusStyle.apply(search); search.setText("> SEARCH"); search.setOnClickListener(v->search());root.addView(search);
-        query.setOnEditorActionListener((v,a,e)->{search();return true;});
-        Button language=new Button(this);FocusStyle.apply(language);language.setText("SOURCE AUDIO: SUB");language.setOnClickListener(v->{mode=mode.equals("sub")?"dub":"sub";language.setText("SOURCE AUDIO: "+mode.toUpperCase(java.util.Locale.ROOT));});root.addView(language);
-        resumeButton=new Button(this);FocusStyle.apply(resumeButton);resumeButton.setText("Continue watching");
-        resumeButton.setVisibility(getPreferences(0).contains("episode")?View.VISIBLE:View.GONE);
-        resumeButton.setOnClickListener(v->{android.content.SharedPreferences p=getPreferences(0);mode=p.getString("mode","sub");slug=p.getString("slug","");query.setText(p.getString("query",""));episodeLabel=p.getString("label","");resumePosition=p.getLong("position",0);resolve(p.getString("episode",""));});root.addView(resumeButton);
-        Button watched=new Button(this);FocusStyle.apply(watched);watched.setText("Last watched");watched.setOnClickListener(v->showHistory());root.addView(watched);
-        status=text("READY // enter a title",16);root.addView(status);
-        ScrollView scroll=new ScrollView(this); rows=new LinearLayout(this); rows.setOrientation(LinearLayout.VERTICAL);scroll.addView(rows);LinearLayout content=new LinearLayout(this);content.addView(scroll,new LinearLayout.LayoutParams(0,-1,1));
-        poster=new ImageView(this);poster.setScaleType(ImageView.ScaleType.FIT_CENTER);poster.setVisibility(View.GONE);content.addView(poster,new LinearLayout.LayoutParams(dp(100),-1));posters=new PosterPreview(this,poster);
-        root.addView(content,new LinearLayout.LayoutParams(-1,0,1));setContentView(root);
+        ImageView logo=new ImageView(this);logo.setImageResource(R.drawable.icon);logo.setContentDescription("mero-stream logo");brand.addView(logo,new LinearLayout.LayoutParams(dp(40),dp(40)));brand.addView(text("mero-stream // anime terminal",22));root.addView(brand);
+        LinearLayout body=new LinearLayout(this),left=new LinearLayout(this);left.setOrientation(LinearLayout.VERTICAL);left.setPadding(0,0,dp(18),0);body.addView(left,new LinearLayout.LayoutParams(0,-1,3));
+        query=new EditText(this);query.setSingleLine(true);query.setTextSize(17);query.setTextColor(Color.WHITE);query.setHintTextColor(0xff95a5b0);query.setHint("Search anime_ ");query.setTypeface(Typeface.MONOSPACE);left.addView(query);
+        LinearLayout actions=new LinearLayout(this);left.addView(actions);
+        Button search=menuButton("> SEARCH");search.setOnClickListener(v->search());actions.addView(search,new LinearLayout.LayoutParams(0,-2,1));
+        Button language=menuButton("Audio: "+mode.toUpperCase(Locale.ROOT));language.setOnClickListener(v->{mode=mode.equals("sub")?"dub":"sub";language.setText("Audio: "+mode.toUpperCase(Locale.ROOT));});LinearLayout.LayoutParams actionParams=new LinearLayout.LayoutParams(0,-2,1);actionParams.leftMargin=dp(6);actions.addView(language,actionParams);
+        query.setOnEditorActionListener((v,action,event)->{search();return true;});
+        LinearLayout shortcuts=new LinearLayout(this);LinearLayout.LayoutParams shortcutParams=new LinearLayout.LayoutParams(-1,-2);shortcutParams.topMargin=dp(6);left.addView(shortcuts,shortcutParams);
+        resumeButton=menuButton("Continue watching");resumeButton.setVisibility(getPreferences(0).contains("episode")?View.VISIBLE:View.GONE);
+        resumeButton.setOnClickListener(v->{android.content.SharedPreferences prefs=getPreferences(0);mode=prefs.getString("mode","sub");slug=prefs.getString("slug","");query.setText(prefs.getString("query",""));episodeLabel=prefs.getString("label","");resumePosition=prefs.getLong("position",0);resolve(prefs.getString("episode",""));});shortcuts.addView(resumeButton,new LinearLayout.LayoutParams(0,-2,1));
+        Button watched=menuButton("Last watched");watched.setOnClickListener(v->showHistory());LinearLayout.LayoutParams watchedParams=new LinearLayout.LayoutParams(0,-2,1);watchedParams.leftMargin=dp(6);shortcuts.addView(watched,watchedParams);
+        status=text("READY // enter a title",13);left.addView(status);
+        ScrollView scroll=new ScrollView(this);rows=new LinearLayout(this);rows.setOrientation(LinearLayout.VERTICAL);scroll.addView(rows);left.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+        poster=new ImageView(this);poster.setScaleType(ImageView.ScaleType.FIT_CENTER);poster.setVisibility(View.INVISIBLE);poster.setFocusable(false);body.addView(poster,new LinearLayout.LayoutParams(0,-1,2));posters=new PosterPreview(this,poster);
+        root.addView(body,new LinearLayout.LayoutParams(-1,0,1));setContentView(root);
     }
+    Button menuButton(String label){Button button=new Button(this);FocusStyle.apply(button);button.setText(label);button.setTextSize(14);button.setTypeface(Typeface.MONOSPACE);button.setPadding(dp(8),dp(6),dp(8),dp(6));button.setMinimumHeight(dp(40));button.setMinHeight(dp(40));return button;}
+
     int dp(int n) { return Math.round(n * getResources().getDisplayMetrics().density); }
     Button row(String label, Runnable action) {
         Button b=new Button(this); b.setText(label); b.setAllCaps(false);
-        b.setTypeface(Typeface.MONOSPACE); b.setTextSize(18); b.setTextColor(0xffd4eeff);
+        b.setTypeface(Typeface.MONOSPACE); b.setTextSize(16); b.setTextColor(0xffd4eeff);
         b.setGravity(android.view.Gravity.CENTER_VERTICAL | android.view.Gravity.LEFT);
-        b.setPadding(dp(18),dp(14),dp(18),dp(14)); b.setMinHeight(dp(64));
+        b.setPadding(dp(12),dp(8),dp(12),dp(8)); b.setMinHeight(dp(48));b.setMinimumHeight(dp(48));
         FocusStyle.apply(b); b.setOnClickListener(v->action.run());
-        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.bottomMargin=dp(8);rows.addView(b,lp);return b;
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.bottomMargin=dp(4);rows.addView(b,lp);return b;
     }
     void task(String message,Job job) {
         int g=++generation;status.setText(message);
         worker.submit(()->{try{job.run();}catch(Exception e){runOnUiThread(()->{if(g==generation){status.setText("ERROR // "+e.getClass().getSimpleName()+" — retry or search again");}});}});
     }
     void search() {
-        String q=query.getText().toString().trim();if(q.isEmpty())return;episodes=false;posters.show(null);poster.setVisibility(View.GONE);rows.removeAllViews();
+        String q=query.getText().toString().trim();if(q.isEmpty())return;episodes=false;posters.show(null);poster.setVisibility(View.INVISIBLE);rows.removeAllViews();
         task("SEARCHING...",()->{
             String html=get(base+"/search?keyword="+URLEncoder.encode(q,"UTF-8")).split("id=\"main-sidebar\"")[0];
             List<Provider.SearchResult> found=Provider.searchResults(html);
-            runOnUiThread(()->{rows.removeAllViews();for(Provider.SearchResult x:found){Button entry=row(x.title,()->episodes(x.id));entry.setOnFocusChangeListener((v,focused)->{if(focused){poster.setVisibility(x.poster.startsWith("https://")?View.VISIBLE:View.GONE);poster.setContentDescription(x.title+" poster");posters.show(x.poster);}});}status.setText(found.isEmpty()?"NO RESULTS // provider may be unavailable":found.size()+" RESULTS");if(rows.getChildCount()>0)rows.getChildAt(0).requestFocus();});
+            runOnUiThread(()->{rows.removeAllViews();for(Provider.SearchResult x:found){Button entry=row(x.title,()->episodes(x.id));entry.setOnFocusChangeListener((v,focused)->{if(focused){poster.setVisibility(x.poster.startsWith("https://")?View.VISIBLE:View.INVISIBLE);poster.setContentDescription(x.title+" poster");posters.show(x.poster,Provider.BASE+"/"+x.id);}});}status.setText(found.isEmpty()?"NO RESULTS // provider may be unavailable":found.size()+" RESULTS");if(rows.getChildCount()>0)rows.getChildAt(0).requestFocus();});
         });
     }
     void episodes(String id) {
@@ -95,7 +99,7 @@ public class MainActivity extends Activity {
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN|View.SYSTEM_UI_FLAG_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
     }
     void showHistory(){
-        historyOpen=true;episodes=false;posters.show(null);poster.setVisibility(View.GONE);rows.removeAllViews();org.json.JSONArray entries=new WatchHistory(this).entries();
+        historyOpen=true;episodes=false;posters.show(null);poster.setVisibility(View.INVISIBLE);rows.removeAllViews();org.json.JSONArray entries=new WatchHistory(this).entries();
         for(int i=0;i<entries.length();i++){JSONObject item=entries.optJSONObject(i);if(item==null)continue;
             String title=item.optString("slug").replaceFirst("-[0-9]+$", "").replace('-', ' ');
             row(title+" // EP "+item.optString("label","?")+" // "+(item.optBoolean("completed")?"Completed":item.optLong("position")/60000+" min")+" // "+item.optString("mode"),()->{

@@ -9,9 +9,10 @@ import java.util.regex.*;
 final class Provider {
  static final String BASE="https://hianime.at";
  static final class Stream { final String url,referer;final JSONArray subtitles;Stream(String u,String r,JSONArray s){url=u;referer=r;subtitles=s;} }
-    static String get(String url) throws Exception {
+    static String get(String url) throws Exception {return get(url,10000);}
+    static String get(String url,int timeout) throws Exception {
         URL u=new URL(url);if(!u.getProtocol().equals("https"))throw new IOException("HTTPS required");
-        HttpURLConnection c=(HttpURLConnection)u.openConnection();c.setConnectTimeout(10000);c.setReadTimeout(10000);c.setRequestProperty("User-Agent","Mozilla/5.0");
+        HttpURLConnection c=(HttpURLConnection)u.openConnection();c.setConnectTimeout(timeout);c.setReadTimeout(timeout);c.setRequestProperty("User-Agent","Mozilla/5.0");
         try {if(c.getResponseCode()!=200)throw new IOException("Provider unavailable");try(InputStream in=c.getInputStream();ByteArrayOutputStream out=new ByteArrayOutputStream()){byte[] b=new byte[8192];int n;while((n=in.read(b))!=-1){if(out.size()+n>4000000)throw new IOException("Response too large");out.write(b,0,n);}return out.toString("UTF-8");}}finally{c.disconnect();}
     }
     static String clean(String s){return Html.fromHtml(s,Html.FROM_HTML_MODE_LEGACY).toString();}
