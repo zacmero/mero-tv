@@ -20,5 +20,7 @@
                 <data android:scheme="https" />
             </intent-filter>
         </activity>
+        <activity android:name=".ProtectedBrowserActivity" android:exported="false"
+            android:screenOrientation="landscape" android:configChanges="keyboard|keyboardHidden|orientation|screenSize" />
     </application>
 </manifest>

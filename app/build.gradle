@@ -2,13 +2,15 @@ plugins { id 'com.android.application' }
 
 android {
     namespace 'dev.mero.tv'
-    compileSdk 35
+    compileSdk 37
+    compileSdkMinor 2
     defaultConfig {
         applicationId 'dev.mero.tv'
         minSdk 28
         targetSdk 35
-        versionCode 1
-        versionName '0.1.0'
+        versionCode 2
+        versionName '0.2.0'
+        ndk { abiFilters 'armeabi-v7a' }
         testInstrumentationRunner 'dev.mero.tv.BrowserChecks'
     }
     compileOptions {
@@ -16,3 +18,25 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 }
+
+dependencies {
+    implementation 'org.mozilla.geckoview:geckoview:159.0.20261102144711'
+}
+
+def blockerUrl = 'https://addons.mozilla.org/firefox/downloads/file/5235054/ublock_origin_lite-2026.1110.1816.xpi'
+def blockerHash = '3838bf88742ab921f553795b5b96f21e6429e198c1db3865c414402e5fe55059'
+def blockerAssets = layout.buildDirectory.dir('generated/blocker-assets')
+android.sourceSets.main.assets.srcDir(blockerAssets.get().asFile)
+tasks.register('prepareBlocker') {
+    inputs.property('sha256', blockerHash)
+    outputs.file(blockerAssets.map { it.file('extensions/ublock.xpi') })
+    doLast {
+        def file = blockerAssets.get().file('extensions/ublock.xpi').asFile
+        file.parentFile.mkdirs()
+        if (file.exists() && java.security.MessageDigest.getInstance('SHA-256').digest(file.bytes).encodeHex().toString() != blockerHash) file.delete()
+        if (!file.exists()) new URL(blockerUrl).withInputStream { input -> file.withOutputStream { it << input } }
+        def hash = java.security.MessageDigest.getInstance('SHA-256').digest(file.bytes).encodeHex().toString()
+        if (hash != blockerHash) { file.delete(); throw new GradleException('uBlock Origin Lite checksum mismatch') }
+    }
+}
+tasks.named('preBuild').configure { dependsOn('prepareBlocker') }

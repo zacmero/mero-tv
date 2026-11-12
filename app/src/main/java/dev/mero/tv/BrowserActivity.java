@@ -134,9 +134,10 @@ public final class BrowserActivity extends Activity {
         Button add = button("+ Add site", () -> edit(null, "", ""));
         attachButton(actions, add);
         attachButton(actions, button("Open address", () -> addressDialog("")));
+        attachButton(actions, button("Browser mode", this::browserMode));
         if (web != null && UrlPolicy.isWeb(web.getUrl())) attachButton(actions, button("Resume page", this::showBrowser));
-        attachButton(actions, button("About", () -> new AlertDialog.Builder(this).setTitle("Mero TV 0.1")
-                .setMessage("A native TV site library using the installed Android WebView. Sites start empty and stay on this device. Menu opens browser controls. No root is required.")
+        attachButton(actions, button("About", () -> new AlertDialog.Builder(this).setTitle("Mero TV 0.2")
+                .setMessage("Native TV library with a protected Firefox browser and uBlock Origin Lite 2026.1110.1816. The lightweight system browser remains available without extensions. GeckoView is MPL-2.0; uBlock Origin is GPL-3.0-only. Source and licenses are in the project notices. No root is required.")
                 .setPositiveButton("Close", null).show()));
         content.addView(actions);
         GridLayout grid = new GridLayout(this); grid.setColumnCount(3);
@@ -229,6 +230,7 @@ public final class BrowserActivity extends Activity {
         attachButton(tools, button("→", () -> { if (web.canGoForward()) web.goForward(); }));
         attachButton(tools, button("Reload", () -> web.reload()));
         attachButton(tools, button("Save", this::saveCurrent));
+        attachButton(tools, button("Scroll", () -> { scrollMode = !scrollMode; cursorMode = true; pointer.setVisibility(View.VISIBLE); web.requestFocus(); message(scrollMode ? "D-pad now scrolls. Press Scroll to move the pointer again." : "D-pad moves the pointer; screen edges scroll."); }));
         attachButton(tools, button("Controls", this::browserActions));
         browserPanel.addView(tools);
         pageLabel = label("", 13, MUTED); pageLabel.setSingleLine(true);
@@ -308,6 +310,10 @@ public final class BrowserActivity extends Activity {
     private void open(String value) {
         try {
             String url = UrlPolicy.normalize(value);
+            if (getSharedPreferences("browser", MODE_PRIVATE).getBoolean("extensions", true)) {
+                startActivity(new Intent(this, ProtectedBrowserActivity.class).setData(Uri.parse(url)));
+                return;
+            }
             if (web == null) createBrowser();
             showBrowser(); web.loadUrl(url);
         } catch (IllegalArgumentException e) { message(e.getMessage()); }
@@ -317,6 +323,14 @@ public final class BrowserActivity extends Activity {
         library = false;
         root.removeAllViews(); root.addView(browserPanel, new FrameLayout.LayoutParams(-1, -1));
         web.onResume(); web.requestFocus(); pointer.setVisibility(cursorMode ? View.VISIBLE : View.GONE);
+    }
+    private void browserMode() {
+        int selected = getSharedPreferences("browser", MODE_PRIVATE).getBoolean("extensions", true) ? 0 : 1;
+        new AlertDialog.Builder(this).setTitle("Browser mode")
+                .setSingleChoiceItems(new String[]{"Protected browser · uBlock Origin Lite", "Lightweight browser · no extensions"}, selected, (d, which) -> {
+                    getSharedPreferences("browser", MODE_PRIVATE).edit().putBoolean("extensions", which == 0).apply();
+                    d.dismiss(); message(which == 0 ? "Protected browser selected." : "Lightweight browser selected. uBlock Origin is unavailable in this mode.");
+                }).setNegativeButton("Cancel", null).show();
     }
     private void saveCurrent() {
         if (web != null && UrlPolicy.isWeb(web.getUrl())) edit(null, web.getTitle() == null ? "" : web.getTitle(), web.getUrl());
@@ -372,6 +386,10 @@ public final class BrowserActivity extends Activity {
             }
             return true;
         }
+        if (!library && fullscreen == null && (key == KeyEvent.KEYCODE_MEDIA_FAST_FORWARD || key == KeyEvent.KEYCODE_MEDIA_REWIND)) {
+            if (event.getAction() == KeyEvent.ACTION_DOWN) web.scrollBy(0, (key == KeyEvent.KEYCODE_MEDIA_FAST_FORWARD ? 1 : -1) * web.getHeight() * 2 / 3);
+            return true;
+        }
         if (!library && fullscreen == null && cursorMode && web.hasFocus()
                 && (key >= KeyEvent.KEYCODE_DPAD_UP && key <= KeyEvent.KEYCODE_DPAD_CENTER)) {
             if (event.getAction() == KeyEvent.ACTION_DOWN) {
@@ -386,7 +404,10 @@ public final class BrowserActivity extends Activity {
                 } else if (scrollMode) web.scrollBy(x * 4, y * 4);
                 else {
                     cursorX = Math.max(0, Math.min(web.getWidth() - 1, cursorX + x));
-                    cursorY = Math.max(0, Math.min(web.getHeight() - 1, cursorY + y)); pointer.invalidate();
+                    int edge = dp(32);
+                    if (y > 0 && cursorY + y > web.getHeight() - edge || y < 0 && cursorY + y < edge) web.scrollBy(0, y * 3);
+                    else cursorY = Math.max(edge, Math.min(web.getHeight() - edge, cursorY + y));
+                    pointer.invalidate();
                 }
             }
             return true;
@@ -403,10 +424,11 @@ public final class BrowserActivity extends Activity {
         if (web != null) {
             web.evaluateJavascript("document.querySelectorAll('video,audio').forEach(function(m){m.pause()})", null);
             web.onPause();
+            CookieManager.getInstance().flush();
         }
-        CookieManager.getInstance().flush(); super.onPause();
+        super.onPause();
     }
-    @Override protected void onResume() { super.onResume(); if (web != null && !library) web.onResume(); immersive(); }
+    @Override protected void onResume() { super.onResume(); if (library) showLibrary(selectedSite); else if (web != null) web.onResume(); immersive(); }
     @Override protected void onSaveInstanceState(Bundle state) {
         if (!library && web != null && UrlPolicy.isWeb(web.getUrl())) state.putString("page", web.getUrl());
         super.onSaveInstanceState(state);

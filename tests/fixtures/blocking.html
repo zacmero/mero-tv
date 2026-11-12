@@ -1,0 +1,12 @@
+<!doctype html><html lang="en"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mero blocking and scrolling check</title>
+<body style="background:#101417;color:#edf0e5;font:26px sans-serif;margin:30px">
+<h1>Blocking and scrolling check</h1>
+<p id="control">Control script pending</p><p id="ad">Ad script pending</p>
+<script src="control.js"></script>
+<!-- This filename matches a generic rule in uBlock's bundled filters. -->
+<script src="webtracking.min.js?test=1" onerror="document.getElementById('ad').textContent='Ad request blocked'"></script>
+<p>Hold D-pad Down at the bottom edge, press fast-forward, or enable Scroll.</p>
+<div style="height:2200px"></div><h1>SCROLL END</h1>
+</body></html>
