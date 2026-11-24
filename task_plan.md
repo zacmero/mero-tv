@@ -26,3 +26,11 @@ Cold engine startup remains approximately30s on the tested profile. Hardware sup
 
 ## Checkpoints
 Streaming checkpoint e5d7e5c and original browser checkpoint1af60af are published. Extension/reliability work remains uncommitted. Historical session details are in progress.md, findings.md, and docs/development-handoff-2026-11-11.md. Alexa dictation stays deferred. Reboot durability and prolonged personal-site testing remain separate acceptance work.
+
+## 2026-11-24: mero-stream playback and Fire TV search icon
+
+1. Trace Media3 progress and remote dispatch; confirm device connection. Complete.
+2. Fix visibility, D-pad recovery and direct media keys; package an explicit search icon. Complete.
+3. Run focused regression and live-provider checks on Fire TV, then verify the search surface. Playback and package checks pass. Settings and App Library render the artwork. Your Apps & Games retains a stock tile after package refresh.
+
+Existing Fire TV endpoint returned No route to host. Local rediscovery found the same AFTSSS/sheldonp running PS7717.5746N with mero-stream installed. The private endpoint was updated.

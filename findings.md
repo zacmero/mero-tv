@@ -30,3 +30,5 @@ Fixed-build evidence: three independent protected starts play 1920×1080 H.264 w
 Media-test correction: muted controlled video advances with zero drops but emits no Gecko MediaSession play callbacks in the instrumentation observer. A failed callback wait therefore does not prove video or remote-key failure. Testing the actual audible Media Session site separately; keep generic frame telemetry as the authority for plain/muted video.
 
 - Follow-up: four other owner-saved destinations opened with protection enabled, distinct expected titles and scrollable content. Real-site ad/player coverage remains unverified: failed-channel observer did not calibrate. Corrected private QA wake-up omission; diagnostics disabled and library restored. Raw destinations/evidence remain private.
+
+2026-11-24: In Media3 1.11.1, show() only calls updateAll() and requests Play/Pause focus when the controller was hidden. The prior interact() set the controller visible before calling show(), bypassing both operations. The progress updater can stop while the controller is hidden. App-owned and Media3-owned hide timers were also competing.
