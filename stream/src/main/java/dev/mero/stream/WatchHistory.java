@@ -9,9 +9,9 @@ final class WatchHistory {
     final SharedPreferences prefs;
     WatchHistory(Context context){prefs=context.getSharedPreferences("watch-history",0);}
     JSONArray entries(){try{return new JSONArray(prefs.getString("entries","[]"));}catch(JSONException e){return new JSONArray();}}
-    void save(String episode,String slug,String query,String mode,String label,long position,boolean completed){
+    void save(String episode,String slug,String query,String mode,String preference,String label,long position,boolean completed){
         try{
-            JSONObject entry=new JSONObject().put("episode",episode).put("slug",slug).put("query",query).put("mode",mode).put("label",label).put("position",completed?0:position).put("completed",completed);
+            JSONObject entry=new JSONObject().put("episode",episode).put("slug",slug).put("query",query).put("mode",mode).put("preference",preference).put("label",label).put("position",completed?0:position).put("completed",completed);
             JSONArray next=new JSONArray().put(entry),old=entries();
             for(int i=0;i<old.length()&&next.length()<20;i++){
                 JSONObject item=old.optJSONObject(i);if(item!=null&&!(episode.equals(item.optString("episode"))&&mode.equals(item.optString("mode"))))next.put(item);

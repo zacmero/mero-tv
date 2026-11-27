@@ -116,3 +116,13 @@ On 0.3.0, the clock reopened at 0:01 while live playback was already at 5.5 seco
 The local clip and live anime checks inject keys through Android's input dispatcher after two 5.5-second idle periods. They verify hidden playback on Center press, repeat and release, explicit overlay opening with Up, and Center selection with the controls visible. They also check the rendered elapsed time against the player, verify it advances, and exercise dedicated Play/Pause, two-second seeks, timeline selection, Subtitles and Back. The local clip is a generated H.264 fixture packaged only in the test APK. Run the checks with `-e check playback-remote` and `-e check live-remote` on the existing instrumentation runner.
 
 The application and launcher activity now explicitly declare matching blue bitmap icons and widescreen banners. The `-e check launcher-icon` device test passed for both launcher categories and for application lookup. Fire TV Settings and the Appstore's App Library rendered the custom artwork. **Your Apps & Games** still rendered the stock tile after an in-place update, an availability refresh, and data-retaining re-registration. All five app preference files matched byte for byte after re-registration. Fire TV Find did not show an installed mero-stream app result for the exact name, so its search-result artwork remains unverified.
+
+## Episode controls and search history — 2026-11-27
+
+Version 0.4.0 uses the available SUB or DUB source when the preferred mode has no supported server. The controls show the selected mode. The reported single-episode film previously returned a generic `IOException` because its provider listed DUB only. The installed Fire TV test advanced at least five seconds after selecting DUB automatically from a SUB preference.
+
+**Search history** keeps distinct submitted terms on the device and can rerun them. At first launch it imports terms from existing playback history and Continue Watching. Searches that older builds did not store cannot be recovered.
+
+Up opens the playback controls. The center row enables Previous or Next when the series has an adjacent episode. Reaching the end starts the next episode from its beginning. **Skip opening** appears beside **Subtitles** during an opening with valid provider timestamps. It seeks to the marked end and then disappears. Playback retains the source aspect ratio and uses black borders.
+
+Build and lint passed. On Fire TV, `-e check playback-remote` measured black pixels beside a visible 4:3 clip and passed the existing remote checks. The live `-e check episode-features` found the saved search, used the D-pad to navigate between episodes, skipped a marked 89-second opening, and verified that playback continued into the next episode after reaching the end.

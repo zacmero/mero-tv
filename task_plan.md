@@ -34,3 +34,9 @@ Streaming checkpoint e5d7e5c and original browser checkpoint1af60af are publishe
 3. Run focused regression and live-provider checks on Fire TV, then verify the search surface. Playback and package checks pass. Settings and App Library render the artwork. Your Apps & Games retains a stock tile after package refresh.
 
 Existing Fire TV endpoint returned No route to host. Local rediscovery found the same AFTSSS/sheldonp running PS7717.5746N with mero-stream installed. The private endpoint was updated.
+
+## 2026-11-27: mero-stream episode navigation and provider reliability
+
+1. Diagnose the reported title against the current provider and find episode opening data. Complete.
+2. Add search history, black playback borders, episode controls and autoplay, and Skip Opening. Complete.
+3. Build, test the new and existing playback flows, and install on the Fire TV. Complete. Signed 0.4.0 installed. Build/lint, DUB fallback, rendered 4:3 borders, existing remote controls, search history, episode navigation, opening skip, and automatic next all passed.

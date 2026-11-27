@@ -2,13 +2,20 @@ package dev.mero.stream;
 import android.app.Instrumentation;
 import android.app.Activity;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.TextView;
 import androidx.media3.ui.R;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 public class StreamChecks extends Instrumentation {
  MainActivity app;String check;
  @Override public void runOnMainSync(Runnable action){Throwable[] error={null};super.runOnMainSync(()->{try{action.run();}catch(Throwable e){error[0]=e;}});if(error[0]!=null)throw new RuntimeException(error[0]);}
@@ -24,7 +31,8 @@ public class StreamChecks extends Instrumentation {
     for (int count; (count = source.read(buffer)) != -1; ) output.write(buffer, 0, count);
    }
    try {
-    runOnMainSync(() -> app.play(android.net.Uri.fromFile(clip).toString(), ""));
+    runOnMainSync(() -> app.play(new Provider.Stream(android.net.Uri.fromFile(clip).toString(),
+      "", null, "sub", null), 0, true));
     checkPlaybackRemote(result);
    } finally {
     runOnMainSync(() -> app.finish());
@@ -44,22 +52,18 @@ public class StreamChecks extends Instrumentation {
    result.putString("launcher","PASS: bitmap icon and banner through application, MAIN/LAUNCHER and MAIN/LEANBACK_LAUNCHER");
    finish(Activity.RESULT_OK,result);return;
   }
+  if ("live-remote".equals(check) || "episode-features".equals(check) || "genocidal-organ".equals(check)) {
+   checkWithoutSavingHistory(result);
+   finish(Activity.RESULT_OK,result);return;
+  }
   runOnMainSync(()->{app.query.setText("sousou no frieren");app.search();});
   waitFor(()->app.rows.getChildCount()>0,20000,"Search results");
-  if (!"live-remote".equals(check)) {
-   waitFor(()->app.poster.getDrawable()!=null,10000,"Focused poster preview");
-   runOnMainSync(()->{android.graphics.drawable.BitmapDrawable poster=(android.graphics.drawable.BitmapDrawable)app.poster.getDrawable();if(poster.getBitmap().getWidth()>768||poster.getBitmap().getHeight()>1152)throw new AssertionError("Poster decode exceeded bounds");if(poster.getBitmap().getWidth()<300||poster.getBitmap().getHeight()<450)throw new AssertionError("Expected higher-resolution detail poster");if(app.poster.getWidth()<app.root.getWidth()*.3||app.poster.getHeight()<app.root.getHeight()*.65)throw new AssertionError("Poster panel is too small");});
-  }
+  waitFor(()->app.poster.getDrawable()!=null,10000,"Focused poster preview");
+  runOnMainSync(()->{android.graphics.drawable.BitmapDrawable poster=(android.graphics.drawable.BitmapDrawable)app.poster.getDrawable();if(poster.getBitmap().getWidth()>768||poster.getBitmap().getHeight()>1152)throw new AssertionError("Poster decode exceeded bounds");if(poster.getBitmap().getWidth()<300||poster.getBitmap().getHeight()<450)throw new AssertionError("Expected higher-resolution detail poster");if(app.poster.getWidth()<app.root.getWidth()*.3||app.poster.getHeight()<app.root.getHeight()*.65)throw new AssertionError("Poster panel is too small");});
   runOnMainSync(()->app.rows.getChildAt(0).performClick());
   waitFor(()->app.episodes&&app.rows.getChildCount()>0,20000,"Episodes");
   runOnMainSync(()->app.rows.getChildAt(0).performClick());
   waitFor(()->app.video!=null,25000,"Stream resolution");
-  if ("live-remote".equals(check)) {
-   runOnMainSync(() -> app.episodeId = "");
-   checkPlaybackRemote(result);
-   runOnMainSync(() -> app.finish());
-   finish(Activity.RESULT_OK,result);return;
-  }
   waitFor(()->app.video!=null&&app.video.player.getCurrentPosition()>15000,40000,"Advancing playback");
   runOnMainSync(()->{
    app.video.player.pause();long start=app.video.player.getCurrentPosition();
@@ -96,10 +100,11 @@ public class StreamChecks extends Instrumentation {
   runOnMainSync(()->{
    app.video.surface.showController();app.onBackPressed();
    if(app.video==null||app.video.surface.isControllerFullyVisible())throw new AssertionError("First Back must hide controls");
+   String episodeId = app.playing.selection().episode().id();
    app.onBackPressed();if(app.video!=null)throw new AssertionError("Second Back must exit playback");
    if(app.getPreferences(0).getLong("position",0)<10000)throw new AssertionError("Progress not saved");
    org.json.JSONArray history=new WatchHistory(app).entries();
-   if(history.length()==0||!app.episodeId.equals(history.optJSONObject(0).optString("episode")))throw new AssertionError("Last watched missing current episode");
+   if(history.length()==0||!episodeId.equals(history.optJSONObject(0).optString("episode")))throw new AssertionError("Last watched missing current episode");
    app.showHistory();if(app.rows.getChildCount()==0)throw new AssertionError("History rows missing");app.rows.getChildAt(0).performClick();
   });
   waitFor(()->app.video!=null&&app.video.player.isPlaying()&&app.video.player.getCurrentPosition()>10000,30000,"Continue watching");
@@ -134,6 +139,164 @@ public class StreamChecks extends Instrumentation {
   result.putString("controls","PASS: Back hides then exits; Continue restores position");
   result.putString("stream","PASS: widescreen playback, controls, history resume and subtitle placement, two-second seeks, clean Center down/up confirmation and large bounded poster panel");finish(Activity.RESULT_OK,result);
  }catch(Throwable e){android.util.Log.e("StreamChecks","Acceptance failure",e);result.putString("stream","FAIL: "+e.getMessage());finish(Activity.RESULT_CANCELED,result);}}
+
+ private void checkWithoutSavingHistory(Bundle result) throws Exception {
+  SharedPreferences[] prefs = { app.getPreferences(0), new WatchHistory(app).prefs, new SearchHistory(app).prefs };
+  List<Map<String, ?>> snapshots = new ArrayList<>();
+  for (SharedPreferences p : prefs) snapshots.add(p.getAll());
+  try {
+   if ("genocidal-organ".equals(check)) {
+    selectTitle("Genocidal Organ");
+    selectEpisode(0);
+    waitFor(() -> app.video != null && app.video.player.isPlaying()
+      && app.video.player.getCurrentPosition() >= 5000 && app.video.player.getVideoSize().height > 0,
+      35000, "Genocidal Organ advances");
+    runOnMainSync(() -> {
+     if (!"sub".equals(app.playing.selection().preference()) || !"dub".equals(app.playing.mode())
+       || app.playing.episodes().size() != 1 || app.playing.hasEpisode(-1) || app.playing.hasEpisode(1)) {
+      throw new AssertionError("Expected the DUB fallback and single-episode boundaries");
+     }
+     if (findButton(app.video.bar, "Skip opening") != null) throw new AssertionError("Unmarked opening button");
+    });
+    result.putString("film", "PASS: film advances with the available DUB source selected automatically");
+   } else if ("episode-features".equals(check)) {
+    checkEpisodeFeatures(result);
+   } else {
+    selectTitle("sousou no frieren");
+    selectEpisode(0);
+    checkPlaybackRemote(result);
+   }
+  } finally {
+   runOnMainSync(() -> {
+    app.playing = null;
+    app.finish();
+    for (int i = 0; i < prefs.length; i++) {
+     SharedPreferences.Editor update = prefs[i].edit().clear();
+     for (Map.Entry<String, ?> entry : snapshots.get(i).entrySet()) {
+      if (entry.getValue() instanceof String text) update.putString(entry.getKey(), text);
+      else if (entry.getValue() instanceof Long time) update.putLong(entry.getKey(), time);
+     }
+     update.apply();
+    }
+   });
+  }
+ }
+
+ private void selectTitle(String term) throws Exception {
+  runOnMainSync(() -> {
+   app.query.setText(term);
+   app.search();
+  });
+  waitFor(() -> app.rows.getChildCount() > 0, 20000, "Search results for live test");
+  runOnMainSync(() -> app.rows.getChildAt(0).performClick());
+  waitFor(() -> app.episodes && app.rows.getChildCount() > 0, 20000, "Title's episode list");
+ }
+
+ private void selectEpisode(int index) {
+  runOnMainSync(() -> app.rows.getChildAt(index).performClick());
+ }
+
+ private void waitForEpisode(int index) throws Exception {
+  waitFor(() -> app.playing != null && app.playing.index() == index && app.video != null
+    && app.video.player.isPlaying() && app.video.player.getCurrentPosition() > 0,
+    35000, "Playing expected episode");
+ }
+
+ private void openControls() throws Exception {
+  boolean[] hidden = { false };
+  runOnMainSync(() -> hidden[0] = !app.video.surface.isControllerFullyVisible());
+  if (hidden[0]) remoteKey(KeyEvent.KEYCODE_DPAD_UP);
+  waitFor(() -> app.video.surface.isControllerFullyVisible(), 2000, "Playback controls shown");
+ }
+
+ private void selectEpisodeControl(int id, int direction) throws Exception {
+  openControls();
+  runOnMainSync(() -> {
+   if (!control(id).isEnabled()) throw new AssertionError("Episode control is disabled");
+   control(R.id.exo_play_pause).requestFocus();
+  });
+  for (int i = 0; i < 3; i++) {
+   boolean[] focused = { false };
+   runOnMainSync(() -> focused[0] = control(id).hasFocus());
+   if (focused[0]) {
+    remoteKey(KeyEvent.KEYCODE_DPAD_CENTER);
+    return;
+   }
+   remoteKey(direction);
+  }
+  throw new AssertionError("Episode control cannot be reached with the D-pad");
+ }
+
+ private void checkEpisodeFeatures(Bundle result) throws Exception {
+  // The real search submits to the provider. Keep the menu and saved-state checks independent of playback.
+  selectTitle("sousou no frieren");
+  runOnMainSync(() -> {
+   if (!new SearchHistory(app).terms().get(0).equals("sousou no frieren")) {
+    throw new AssertionError("Search did not persist");
+   }
+   findButton(app.root, "Search history").performClick();
+  });
+  long deadline = SystemClock.elapsedRealtime() + 3000;
+  boolean found = false;
+  do {
+   AccessibilityNodeInfo window = getUiAutomation().getRootInActiveWindow();
+   found = window != null && !window.findAccessibilityNodeInfosByText("sousou no frieren").isEmpty()
+     && !window.findAccessibilityNodeInfosByText("Search history").isEmpty();
+   if (!found) Thread.sleep(100);
+  } while (!found && SystemClock.elapsedRealtime() < deadline);
+  if (!found) throw new AssertionError("Search history menu did not show the saved query");
+  remoteKey(KeyEvent.KEYCODE_BACK);
+  waitFor(() -> app.hasWindowFocus(), 2500, "Catalogue restored after Search History");
+
+  selectEpisode(0);
+  waitForEpisode(0);
+  openControls();
+  runOnMainSync(() -> {
+   if (control(R.id.exo_prev).isEnabled()) throw new AssertionError("Previous enabled on first episode");
+  });
+  selectEpisodeControl(R.id.exo_next, KeyEvent.KEYCODE_DPAD_RIGHT);
+  waitForEpisode(1);
+  openControls();
+  waitFor(() -> {
+   View skip = findButton(app.video.bar, "Skip opening");
+   return skip != null && skip.isShown();
+  }, 2200, "Marked opening is available in the toolbar");
+  runOnMainSync(() -> {
+   control(R.id.exo_play_pause).requestFocus();
+   if (!"Skip opening".contentEquals(((TextView) app.video.bar.getChildAt(1)).getText())) {
+    throw new AssertionError("Skip Opening must sit beside Subtitles");
+   }
+  });
+  remoteKey(KeyEvent.KEYCODE_DPAD_DOWN);
+  remoteKey(KeyEvent.KEYCODE_DPAD_DOWN);
+  remoteKey(KeyEvent.KEYCODE_DPAD_RIGHT);
+  runOnMainSync(() -> {
+   if (!findButton(app.video.bar, "Skip opening").hasFocus()) {
+    throw new AssertionError("D-pad cannot reach Skip Opening");
+   }
+  });
+  remoteKey(KeyEvent.KEYCODE_DPAD_CENTER);
+  waitFor(() -> app.video.player.getCurrentPosition() >= 89000, 10000, "Skip Opening seeks to the marked end");
+  openControls();
+  runOnMainSync(() -> {
+   if (findButton(app.video.bar, "Skip opening").isShown()) {
+    throw new AssertionError("Skip Opening remained outside the opening");
+   }
+  });
+  selectEpisodeControl(R.id.exo_prev, KeyEvent.KEYCODE_DPAD_LEFT);
+  waitForEpisode(0);
+  runOnMainSync(() -> {
+   long duration = app.video.player.getDuration();
+   if (duration <= 0) throw new AssertionError("Expected finite video duration");
+   app.video.player.seekTo(duration - 1000);
+  });
+  waitForEpisode(1);
+  runOnMainSync(() -> {
+   if (app.video.surface.isControllerFullyVisible()) throw new AssertionError("Autoplay opened the controls");
+   if (app.video.player.getCurrentPosition() > 15000) throw new AssertionError("Autoplay reused the old position");
+  });
+  result.putString("episodes", "PASS: search history, D-pad Next/Previous, opening skip and automatic next");
+ }
 
  void checkLauncherIcon() {
   android.content.pm.PackageManager pm = app.getPackageManager();
@@ -170,6 +333,7 @@ public class StreamChecks extends Instrumentation {
   runOnMainSync(() -> {
    if (app.video.surface.isControllerFullyVisible()) throw new AssertionError("Overlay failed to hide");
   });
+  if ("playback-remote".equals(check)) checkBlackBars();
 
   long centerDown = SystemClock.uptimeMillis();
   remoteKeyEvent(KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.ACTION_DOWN, centerDown, 0);
@@ -251,6 +415,27 @@ public class StreamChecks extends Instrumentation {
  }
 
  private View control(int id) { return app.video.surface.findViewById(id); }
+ private void checkBlackBars() {
+  int[] bounds = new int[4];
+  runOnMainSync(() -> {
+   View videoSurface = app.video.surface.getVideoSurfaceView();
+   videoSurface.getLocationOnScreen(bounds);
+   bounds[2] = videoSurface.getWidth();
+   bounds[3] = videoSurface.getHeight();
+  });
+  Bitmap screenshot = getUiAutomation().takeScreenshot();
+  if (screenshot == null || bounds[0] < 16
+    || bounds[0] + bounds[2] + 8 >= screenshot.getWidth()) {
+   throw new AssertionError("Expected both side bars in a 4:3 playback screenshot");
+  }
+  int y = bounds[1] + bounds[3] / 2;
+  if (screenshot.getPixel(bounds[0] - 8, y) != Color.BLACK
+    || screenshot.getPixel(bounds[0] + bounds[2] + 8, y) != Color.BLACK
+    || screenshot.getPixel(bounds[0] + bounds[2] / 2, y) == Color.BLACK) {
+   throw new AssertionError("Displayed side bars must be black with video visible between them");
+  }
+  screenshot.recycle();
+ }
  private void requireHiddenChrome() {
   if (control(R.id.exo_controller).getVisibility() != View.GONE
     || app.video.bar.isShown() || app.video.volume.hud.isShown()) {
